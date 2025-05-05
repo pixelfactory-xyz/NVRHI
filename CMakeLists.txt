@@ -62,7 +62,7 @@ if(NVRHI_WITH_DX12 AND NOT TARGET DirectX-Headers AND NOT TARGET Microsoft::Dire
     add_subdirectory(thirdparty/DirectX-Headers)
 endif()
 
-if (NVRHI_WITH_RTXMU)
+if (NVRHI_WITH_RTXMU AND NOT TARGET rtxmu)
     if (TARGET Vulkan-Headers)
         get_target_property(RTXMU_VULKAN_INCLUDE_DIR Vulkan-Headers INTERFACE_INCLUDE_DIRECTORIES)
     elseif (TARGET Vulkan::Headers)
@@ -272,12 +272,18 @@ if (NVRHI_WITH_DX12)
         target_include_directories(${nvrhi_d3d12_target} PRIVATE include)
     endif()
 
+    target_link_libraries(${nvrhi_d3d12_target} PUBLIC d3d12 dxgi dxguid)
+
     if (NVRHI_WITH_RTXMU)
         target_compile_definitions(${nvrhi_d3d12_target} PUBLIC NVRHI_WITH_RTXMU=1)
         target_link_libraries(${nvrhi_d3d12_target} PUBLIC rtxmu)
     endif()
 
-    target_link_libraries(${nvrhi_d3d12_target} PUBLIC Microsoft::DirectX-Headers Microsoft::DirectX-Guids d3d12)
+    if (TARGET DirectX-Headers)
+        target_link_libraries(${nvrhi_d3d12_target} PUBLIC DirectX-Headers)
+    elseif (TARGET Microsoft::DirectX-Headers)
+        target_link_libraries(${nvrhi_d3d12_target} PUBLIC Microsoft::DirectX-Headers)
+    endif()
 
     if (NVRHI_WITH_NVAPI)
         target_link_libraries(${nvrhi_d3d12_target} PUBLIC nvapi)
@@ -319,9 +325,9 @@ if (NVRHI_WITH_VULKAN)
     endif()
 
     if (TARGET Vulkan-Headers)
-        target_link_libraries(${nvrhi_vulkan_target} PRIVATE Vulkan-Headers)
+        target_link_libraries(${nvrhi_vulkan_target} PUBLIC Vulkan-Headers)
     elseif (TARGET Vulkan::Headers)
-        target_link_libraries(${nvrhi_vulkan_target} PRIVATE Vulkan::Headers)
+        target_link_libraries(${nvrhi_vulkan_target} PUBLIC Vulkan::Headers)
     endif()
 
     if (NVRHI_WITH_AFTERMATH)
