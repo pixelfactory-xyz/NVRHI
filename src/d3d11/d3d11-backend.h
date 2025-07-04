@@ -532,6 +532,7 @@ namespace nvrhi::d3d11
         std::unordered_map<size_t, RefCountPtr<ID3D11RasterizerState>> m_RasterizerStates;
 
         bool m_SinglePassStereoSupported = false;
+        bool m_HlslExtensionsSupported = false;
         bool m_FastGeometryShaderSupported = false;
 
         TextureHandle createTexture(const TextureDesc& d, CpuAccessMode cpuAccess) const;

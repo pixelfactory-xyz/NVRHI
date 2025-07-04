@@ -690,7 +690,7 @@ namespace nvrhi::vulkan
             case BlendOp::Add:
                 return vk::BlendOp::eAdd;
 
-            case BlendOp::Subrtact:
+            case BlendOp::Subtract:
                 return vk::BlendOp::eSubtract;
 
             case BlendOp::ReverseSubtract:
@@ -818,6 +818,50 @@ namespace nvrhi::vulkan
         case ShadingRateCombiner::Passthrough:
         default:
             return vk::FragmentShadingRateCombinerOpKHR::eKeep;
+        }
+    }
+
+    vk::DescriptorType convertResourceType(ResourceType type)
+    {
+        switch (type)
+        {
+        case ResourceType::Texture_SRV:
+            return vk::DescriptorType::eSampledImage;
+
+        case ResourceType::Texture_UAV:
+            return vk::DescriptorType::eStorageImage;
+
+        case ResourceType::TypedBuffer_SRV:
+            return vk::DescriptorType::eUniformTexelBuffer;
+
+        case ResourceType::TypedBuffer_UAV:
+            return vk::DescriptorType::eStorageTexelBuffer;
+
+        case ResourceType::StructuredBuffer_SRV:
+        case ResourceType::StructuredBuffer_UAV:
+        case ResourceType::RawBuffer_SRV:
+        case ResourceType::RawBuffer_UAV:
+            return vk::DescriptorType::eStorageBuffer;
+
+        case ResourceType::ConstantBuffer:
+            return vk::DescriptorType::eUniformBuffer;
+
+        case ResourceType::VolatileConstantBuffer:
+            return vk::DescriptorType::eUniformBufferDynamic;
+
+        case ResourceType::Sampler:
+            return vk::DescriptorType::eSampler;
+
+        case ResourceType::PushConstants:
+            return vk::DescriptorType::eUniformBuffer; // not really though, there are no descriptors for push constants
+
+        case ResourceType::RayTracingAccelStruct:
+            return vk::DescriptorType::eAccelerationStructureKHR;
+            break;
+
+        default:
+            utils::InvalidEnum();
+            return vk::DescriptorType(0);
         }
     }
 

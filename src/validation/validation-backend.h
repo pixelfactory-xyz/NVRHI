@@ -23,7 +23,7 @@
 #pragma once
 
 #include <nvrhi/validation.h>
-#include "../common/sparse-bitset.h"
+#include <unordered_set>
 
 namespace nvrhi::validation
 {
@@ -39,12 +39,59 @@ namespace nvrhi::validation
         [[nodiscard]] bool overlapsWith(const Range& other) const;
     };
 
-    struct ShaderBindingSet
+    enum class GraphicsResourceType : uint32_t
     {
-        sparse_bitset SRV;
-        sparse_bitset Sampler;
-        sparse_bitset UAV;
-        sparse_bitset CB;
+        SRV,
+        Sampler,
+        UAV,
+        CB
+    };
+
+    struct BindingLocation
+    {
+        GraphicsResourceType type = GraphicsResourceType::SRV;
+        uint32_t registerSpace = 0;
+        uint32_t slot = 0;
+        uint32_t arrayElement = 0;
+
+        bool operator==(BindingLocation const& other) const
+        {
+            return type == other.type
+                && registerSpace == other.registerSpace
+                && slot == other.slot
+                && arrayElement == other.arrayElement;
+        }
+
+        bool operator!=(BindingLocation const& other) const
+        {
+            return !(*this == other);
+        }
+    };
+} // namespace nvrhi::validation
+
+namespace std
+{
+    template<> struct hash<nvrhi::validation::BindingLocation>
+    {
+        std::size_t operator()(nvrhi::validation::BindingLocation const& s) const noexcept
+        {
+            size_t hash = 0;
+            nvrhi::hash_combine(hash, uint32_t(s.type));
+            nvrhi::hash_combine(hash, s.registerSpace);
+            nvrhi::hash_combine(hash, s.slot);
+            nvrhi::hash_combine(hash, s.arrayElement);
+            return hash;
+        }
+    };
+} // namespace std
+
+namespace nvrhi::validation
+{
+    typedef std::unordered_set<BindingLocation> BindingLocationSet;
+
+    struct BindingSummary
+    {
+        BindingLocationSet locations;
         uint32_t numVolatileCBs = 0;
         Range rangeSRV;
         Range rangeSampler;
@@ -52,9 +99,10 @@ namespace nvrhi::validation
         Range rangeCB;
 
         [[nodiscard]] bool any() const;
-        [[nodiscard]] bool overlapsWith(const ShaderBindingSet& other) const;
-        friend std::ostream& operator<<(std::ostream& os, const ShaderBindingSet& set);
+        [[nodiscard]] bool overlapsWith(const BindingSummary& other) const;
     };
+    
+    std::ostream& operator<<(std::ostream& os, const BindingLocationSet& set);
 
     enum class CommandListState
     {
@@ -240,7 +288,7 @@ namespace nvrhi::validation
         void error(const std::string& messageText) const;
         void warning(const std::string& messageText) const;
 
-        bool validateBindingSetItem(const BindingSetItem& binding, bool isDescriptorTable, std::stringstream& errorStream);
+        bool validateBindingSetItem(const BindingSetItem& binding, IDescriptorTable *pOptDescriptorTable, std::stringstream& errorStream);
         bool validatePipelineBindingLayouts(const static_vector<BindingLayoutHandle, c_MaxBindingLayouts>& bindingLayouts, const std::vector<IShader*>& shaders) const;
         bool validateShaderType(ShaderType expected, const ShaderDesc& shaderDesc, const char* function) const;
         bool validateRenderState(const RenderState& renderState, IFramebuffer* fb) const;

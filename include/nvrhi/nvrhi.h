@@ -64,7 +64,7 @@ namespace nvrhi
 {
     // Version of the public API provided by NVRHI.
     // Increment this when any changes to the API are made.
-    static constexpr uint32_t c_HeaderVersion = 14;
+    static constexpr uint32_t c_HeaderVersion = 18;
 
     // Verifies that the version of the implementation matches the version of the header.
     // Returns true if they match. Use this when initializing apps using NVRHI as a shared library.
@@ -73,8 +73,8 @@ namespace nvrhi
     static constexpr uint32_t c_MaxRenderTargets = 8;
     static constexpr uint32_t c_MaxViewports = 16;
     static constexpr uint32_t c_MaxVertexAttributes = 16;
-    static constexpr uint32_t c_MaxBindingLayouts = 5;
-    static constexpr uint32_t c_MaxBindingsPerLayout = 128;
+    static constexpr uint32_t c_MaxBindingLayouts = 8;
+    static constexpr uint32_t c_MaxBindlessRegisterSpaces = 16;
     static constexpr uint32_t c_MaxVolatileConstantBuffersPerLayout = 6;
     static constexpr uint32_t c_MaxVolatileConstantBuffers = 32;
     static constexpr uint32_t c_MaxPushConstantSize = 128; // D3D12: root signature is 256 bytes max., Vulkan: 128 bytes of push constants guaranteed
@@ -921,7 +921,7 @@ namespace nvrhi
     enum class BlendOp : uint8_t
     {
         Add = 1,
-        Subrtact = 2,
+        Subtract = 2,
         ReverseSubtract = 3,
         Min = 4,
         Max = 5
@@ -1880,6 +1880,9 @@ namespace nvrhi
 
         ResourceType type : 8;
         uint8_t unused : 8;
+        // Push constant byte size when (type == PushConstants)
+        // Descriptor array size (1 or more) for all other resource types
+        // Must be 1 for VolatileConstantBuffer
         uint16_t size : 16;
 
         bool operator ==(const BindingLayoutItem& b) const
@@ -1890,6 +1893,11 @@ namespace nvrhi
         }
         bool operator !=(const BindingLayoutItem& b) const { return !(*this == b); }
 
+        constexpr BindingLayoutItem& setSlot(uint32_t value) { slot = value; return *this; }
+        constexpr BindingLayoutItem& setType(ResourceType value) { type = value; return *this; }
+        constexpr BindingLayoutItem& setSize(uint32_t value) { size = uint16_t(value); return *this; }
+
+        uint32_t getArraySize() const { return (type == ResourceType::PushConstants) ? 1 : size; }
 
         // Helper functions for strongly typed initialization
 #define NVRHI_BINDING_LAYOUT_ITEM_INITIALIZER(TYPE) /* NOLINT(cppcoreguidelines-macro-usage) */ \
@@ -1897,6 +1905,7 @@ namespace nvrhi
             BindingLayoutItem result{}; \
             result.slot = slot; \
             result.type = ResourceType::TYPE; \
+            result.size = 1; \
             return result; }
 
         NVRHI_BINDING_LAYOUT_ITEM_INITIALIZER(Texture_SRV)
@@ -1926,8 +1935,6 @@ namespace nvrhi
 
     // verify the packing of BindingLayoutItem for good alignment
     static_assert(sizeof(BindingLayoutItem) == 8, "sizeof(BindingLayoutItem) is supposed to be 8 bytes");
-
-    typedef static_vector<BindingLayoutItem, c_MaxBindingsPerLayout> BindingLayoutItemArray;
 
     // Describes compile-time settings for HLSL -> SPIR-V register allocation.
     struct VulkanBindingOffsets
@@ -1965,7 +1972,7 @@ namespace nvrhi
         //   an error.
         bool registerSpaceIsDescriptorSet = false;
 
-        BindingLayoutItemArray bindings;
+        std::vector<BindingLayoutItem> bindings;
         VulkanBindingOffsets bindingOffsets;
 
         BindingLayoutDesc& setVisibility(ShaderType value) { visibility = value; return *this; }
@@ -1983,15 +1990,43 @@ namespace nvrhi
     // with the table type (SRV or UAV) derived from the resource type assigned to each space.
     struct BindlessLayoutDesc
     {
+
+        // BindlessDescriptorType bridges the DX12 and Vulkan in supporting HLSL ResourceDescriptorHeap and SamplerDescriptorHeap
+        // For DX12: 
+        // - MutableSrvUavCbv, MutableCounters will enable D3D12_ROOT_SIGNATURE_FLAG_CBV_SRV_UAV_HEAP_DIRECTLY_INDEXED for the Root Signature
+        // - MutableSampler will enable D3D12_ROOT_SIGNATURE_FLAG_SAMPLER_HEAP_DIRECTLY_INDEXED for the Root Signature
+        // - The BindingLayout will be ignored in terms of setting a descriptor set. DescriptorIndexing should use GetDescriptorIndexInHeap()
+        // For Vulkan:
+        // - The type corresponds to the SPIRV bindings which map to ResourceDescriptorHeap and SamplerDescriptorHeap
+        // - The shader needs to be compiled with the same descriptor set index as is passed into setState
+        // https://github.com/microsoft/DirectXShaderCompiler/blob/main/docs/SPIR-V.rst#resourcedescriptorheaps-samplerdescriptorheaps
+        enum class LayoutType
+        {
+            Immutable = 0,      // Must use registerSpaces to define a fixed descriptor type
+
+            MutableSrvUavCbv,   // Corresponds to SPIRV binding -fvk-bind-resource-heap (Counter resources ResourceDescriptorHeap)
+                                // Valid descriptor types: Texture_SRV, Texture_UAV, TypedBuffer_SRV, TypedBuffer_UAV,
+                                // StructuredBuffer_SRV, StructuredBuffer_UAV, RawBuffer_SRV, RawBuffer_UAV, ConstantBuffer
+
+            MutableCounters,    // Corresponds to SPIRV binding -fvk-bind-counter-heap (Counter resources accessed via ResourceDescriptorHeap)
+                                // Valid descriptor types: StructuredBuffer_UAV
+
+            MutableSampler,     // Corresponds to SPIRV binding -fvk-bind-sampler-heap (SamplerDescriptorHeap)
+                                // Valid descriptor types: Sampler
+        };
+
         ShaderType visibility = ShaderType::None;
         uint32_t firstSlot = 0;
         uint32_t maxCapacity = 0;
-        static_vector<BindingLayoutItem, 16> registerSpaces;
+        static_vector<BindingLayoutItem, c_MaxBindlessRegisterSpaces> registerSpaces;
+
+        LayoutType layoutType = LayoutType::Immutable;
 
         BindlessLayoutDesc& setVisibility(ShaderType value) { visibility = value; return *this; }
         BindlessLayoutDesc& setFirstSlot(uint32_t value) { firstSlot = value; return *this; }
         BindlessLayoutDesc& setMaxCapacity(uint32_t value) { maxCapacity = value; return *this; }
         BindlessLayoutDesc& addRegisterSpace(const BindingLayoutItem& value) { registerSpaces.push_back(value); return *this; }
+        BindlessLayoutDesc& setLayoutType(LayoutType value) { layoutType = value; return *this; }
     };
 
     class IBindingLayout : public IResource
@@ -2013,10 +2048,19 @@ namespace nvrhi
 
         uint32_t slot;
 
+        // Specifies the index in a binding array.
+        // Must be less than the 'size' property of the matching BindingLayoutItem.
+        // - DX11/12: Effective binding slot index is calculated as (slot + arrayElement), i.e. arrays are flattened
+        // - Vulkan: Descriptor arrays are used.
+        // This behavior matches the behavior of HLSL resource array declarations when compiled with DXC.
+        uint32_t arrayElement;
+
         ResourceType type          : 8;
         TextureDimension dimension : 8; // valid for Texture_SRV, Texture_UAV
         Format format              : 8; // valid for Texture_SRV, Texture_UAV, Buffer_SRV, Buffer_UAV
         uint8_t unused             : 8;
+
+        uint32_t unused2; // padding
 
         union 
         {
@@ -2055,6 +2099,7 @@ namespace nvrhi
         {
             BindingSetItem result;
             result.slot = slot;
+            result.arrayElement = 0;
             result.type = ResourceType::None;
             result.resourceHandle = nullptr;
             result.format = Format::UNKNOWN;
@@ -2062,6 +2107,7 @@ namespace nvrhi
             result.rawData[0] = 0;
             result.rawData[1] = 0;
             result.unused = 0;
+            result.unused2 = 0;
             return result;
         }
 
@@ -2070,12 +2116,14 @@ namespace nvrhi
         {
             BindingSetItem result;
             result.slot = slot;
+            result.arrayElement = 0;
             result.type = ResourceType::Texture_SRV;
             result.resourceHandle = texture;
             result.format = format;
             result.dimension = dimension;
             result.subresources = subresources;
             result.unused = 0;
+            result.unused2 = 0;
             return result;
         }
 
@@ -2085,12 +2133,14 @@ namespace nvrhi
         {
             BindingSetItem result;
             result.slot = slot;
+            result.arrayElement = 0;
             result.type = ResourceType::Texture_UAV;
             result.resourceHandle = texture;
             result.format = format;
             result.dimension = dimension;
             result.subresources = subresources;
             result.unused = 0;
+            result.unused2 = 0;
             return result;
         }
 
@@ -2098,12 +2148,14 @@ namespace nvrhi
         {
             BindingSetItem result;
             result.slot = slot;
+            result.arrayElement = 0;
             result.type = ResourceType::TypedBuffer_SRV;
             result.resourceHandle = buffer;
             result.format = format;
             result.dimension = TextureDimension::Unknown;
             result.range = range;
             result.unused = 0;
+            result.unused2 = 0;
             return result;
         }
 
@@ -2111,12 +2163,14 @@ namespace nvrhi
         {
             BindingSetItem result;
             result.slot = slot;
+            result.arrayElement = 0;
             result.type = ResourceType::TypedBuffer_UAV;
             result.resourceHandle = buffer;
             result.format = format;
             result.dimension = TextureDimension::Unknown;
             result.range = range;
             result.unused = 0;
+            result.unused2 = 0;
             return result;
         }
 
@@ -2126,12 +2180,14 @@ namespace nvrhi
 
             BindingSetItem result;
             result.slot = slot;
+            result.arrayElement = 0;
             result.type = isVolatile ? ResourceType::VolatileConstantBuffer : ResourceType::ConstantBuffer;
             result.resourceHandle = buffer;
             result.format = Format::UNKNOWN;
             result.dimension = TextureDimension::Unknown;
             result.range = range;
             result.unused = 0;
+            result.unused2 = 0;
             return result;
         }
 
@@ -2139,6 +2195,7 @@ namespace nvrhi
         {
             BindingSetItem result;
             result.slot = slot;
+            result.arrayElement = 0;
             result.type = ResourceType::Sampler;
             result.resourceHandle = sampler;
             result.format = Format::UNKNOWN;
@@ -2146,6 +2203,7 @@ namespace nvrhi
             result.rawData[0] = 0;
             result.rawData[1] = 0;
             result.unused = 0;
+            result.unused2 = 0;
             return result;
         }
 
@@ -2153,6 +2211,7 @@ namespace nvrhi
         {
             BindingSetItem result;
             result.slot = slot;
+            result.arrayElement = 0;
             result.type = ResourceType::RayTracingAccelStruct;
             result.resourceHandle = as;
             result.format = Format::UNKNOWN;
@@ -2160,6 +2219,7 @@ namespace nvrhi
             result.rawData[0] = 0;
             result.rawData[1] = 0;
             result.unused = 0;
+            result.unused2 = 0;
             return result;
         }
 
@@ -2167,12 +2227,14 @@ namespace nvrhi
         {
             BindingSetItem result;
             result.slot = slot;
+            result.arrayElement = 0;
             result.type = ResourceType::StructuredBuffer_SRV;
             result.resourceHandle = buffer;
             result.format = format;
             result.dimension = TextureDimension::Unknown;
             result.range = range;
             result.unused = 0;
+            result.unused2 = 0;
             return result;
         }
 
@@ -2180,12 +2242,14 @@ namespace nvrhi
         {
             BindingSetItem result;
             result.slot = slot;
+            result.arrayElement = 0;
             result.type = ResourceType::StructuredBuffer_UAV;
             result.resourceHandle = buffer;
             result.format = format;
             result.dimension = TextureDimension::Unknown;
             result.range = range;
             result.unused = 0;
+            result.unused2 = 0;
             return result;
         }
 
@@ -2193,12 +2257,14 @@ namespace nvrhi
         {
             BindingSetItem result;
             result.slot = slot;
+            result.arrayElement = 0;
             result.type = ResourceType::RawBuffer_SRV;
             result.resourceHandle = buffer;
             result.format = Format::UNKNOWN;
             result.dimension = TextureDimension::Unknown;
             result.range = range;
             result.unused = 0;
+            result.unused2 = 0;
             return result;
         }
 
@@ -2206,12 +2272,14 @@ namespace nvrhi
         {
             BindingSetItem result;
             result.slot = slot;
+            result.arrayElement = 0;
             result.type = ResourceType::RawBuffer_UAV;
             result.resourceHandle = buffer;
             result.format = Format::UNKNOWN;
             result.dimension = TextureDimension::Unknown;
             result.range = range;
             result.unused = 0;
+            result.unused2 = 0;
             return result;
         }
 
@@ -2219,6 +2287,7 @@ namespace nvrhi
         {
             BindingSetItem result;
             result.slot = slot;
+            result.arrayElement = 0;
             result.type = ResourceType::PushConstants;
             result.resourceHandle = nullptr;
             result.format = Format::UNKNOWN;
@@ -2226,6 +2295,7 @@ namespace nvrhi
             result.range.byteOffset = 0;
             result.range.byteSize = byteSize;
             result.unused = 0;
+            result.unused2 = 0;
             return result;
         }
 
@@ -2233,15 +2303,18 @@ namespace nvrhi
         {
             BindingSetItem result;
             result.slot = slot;
+            result.arrayElement = 0;
             result.type = ResourceType::SamplerFeedbackTexture_UAV;
             result.resourceHandle = texture;
             result.format = Format::UNKNOWN;
             result.dimension = TextureDimension::Unknown;
             result.subresources = AllSubresources;
             result.unused = 0;
+            result.unused2 = 0;
             return result;
         }
 
+        BindingSetItem& setArrayElement(uint32_t value) { arrayElement = value; return *this; }
         BindingSetItem& setFormat(Format value) { format = value; return *this; }
         BindingSetItem& setDimension(TextureDimension value) { dimension = value; return *this; }
         BindingSetItem& setSubresources(TextureSubresourceSet value) { subresources = value; return *this; }
@@ -2249,16 +2322,12 @@ namespace nvrhi
     };
 
     // verify the packing of BindingSetItem for good alignment
-    static_assert(sizeof(BindingSetItem) == 32, "sizeof(BindingSetItem) is supposed to be 32 bytes");
+    static_assert(sizeof(BindingSetItem) == 40, "sizeof(BindingSetItem) is supposed to be 40 bytes");
 
-    // describes the resource bindings for a single pipeline stage
-    typedef static_vector<BindingSetItem, c_MaxBindingsPerLayout> BindingSetItemArray;
-
-    // describes a set of bindings across all stages of the pipeline
-    // (not all bindings need to be present in the set, but the set must be defined by a single BindingSetItem object)
+    // Describes a set of bindings corresponding to one binidng layout
     struct BindingSetDesc
     {
-        BindingSetItemArray bindings;
+        std::vector<BindingSetItem> bindings;
        
         // Enables automatic liveness tracking of this binding set by nvrhi command lists.
         // By setting trackLiveness to false, you take the responsibility of not releasing it 
@@ -2774,27 +2843,29 @@ namespace nvrhi
 
     enum class Feature : uint8_t
     {
-        DeferredCommandLists,
-        SinglePassStereo,
-        RayTracingAccelStruct,
-        RayTracingPipeline,
-        RayTracingOpacityMicromap,
-        RayTracingClusters,
-        RayQuery,
-        ShaderExecutionReordering,
-        Spheres,
-        LinearSweptSpheres,
-        FastGeometryShader,
-        Meshlets,
-        ConservativeRasterization,
-        VariableRateShading,
-        ShaderSpecializations,
-        VirtualResources,
         ComputeQueue,
-        CopyQueue,
+        ConservativeRasterization,
         ConstantBufferRanges,
+        CopyQueue,
+        DeferredCommandLists,
+        FastGeometryShader,
         HeapDirectlyIndexed,
-        SamplerFeedback
+        HlslExtensionUAV,
+        LinearSweptSpheres,
+        Meshlets,
+        RayQuery,
+        RayTracingAccelStruct,
+        RayTracingClusters,
+        RayTracingOpacityMicromap,
+        RayTracingPipeline,
+        SamplerFeedback,
+        ShaderExecutionReordering,
+        ShaderSpecializations,
+        SinglePassStereo,
+        Spheres,
+        VariableRateShading,
+        VirtualResources,
+        WaveLaneCountMinMax,
     };
 
     enum class MessageSeverity : uint8_t
@@ -2817,6 +2888,12 @@ namespace nvrhi
     struct VariableRateShadingFeatureInfo
     {
         uint32_t shadingRateImageTileSize;
+    };
+
+    struct WaveLaneCountMinMaxFeatureInfo
+    {
+        uint32_t minWaveLaneCount;
+        uint32_t maxWaveLaneCount;
     };
 
     // IMessageCallback should be implemented by the application.

@@ -89,6 +89,8 @@ namespace nvrhi::vulkan
             { VK_KHR_SYNCHRONIZATION_2_EXTENSION_NAME, &m_Context.extensions.KHR_synchronization2 },
             { VK_NV_MESH_SHADER_EXTENSION_NAME, &m_Context.extensions.NV_mesh_shader },
             { VK_NV_RAY_TRACING_INVOCATION_REORDER_EXTENSION_NAME, &m_Context.extensions.NV_ray_tracing_invocation_reorder },
+            { VK_NV_CLUSTER_ACCELERATION_STRUCTURE_EXTENSION_NAME, &m_Context.extensions.NV_cluster_acceleration_structure },
+            { VK_EXT_MUTABLE_DESCRIPTOR_TYPE_EXTENSION_NAME, &m_Context.extensions.EXT_mutable_descriptor_type },
 #if NVRHI_WITH_AFTERMATH
             { VK_NV_DEVICE_DIAGNOSTIC_CHECKPOINTS_EXTENSION_NAME, &m_Context.extensions.NV_device_diagnostic_checkpoints },
             { VK_NV_DEVICE_DIAGNOSTICS_CONFIG_EXTENSION_NAME, &m_Context.extensions.NV_device_diagnostics_config }
@@ -125,8 +127,14 @@ namespace nvrhi::vulkan
         vk::PhysicalDeviceFragmentShadingRatePropertiesKHR shadingRateProperties;
         vk::PhysicalDeviceOpacityMicromapPropertiesEXT opacityMicromapProperties;
         vk::PhysicalDeviceRayTracingInvocationReorderPropertiesNV nvRayTracingInvocationReorderProperties;
+        vk::PhysicalDeviceClusterAccelerationStructurePropertiesNV nvClusterAccelerationStructureProperties;
+        vk::PhysicalDeviceSubgroupProperties subgroupProperties;
         
         vk::PhysicalDeviceProperties2 deviceProperties2;
+
+        // Subgroup properties are provided by core Vulkan 1.1
+        subgroupProperties.pNext = pNext;
+        pNext = &subgroupProperties;
 
         if (m_Context.extensions.KHR_acceleration_structure)
         {
@@ -164,6 +172,12 @@ namespace nvrhi::vulkan
             pNext = &nvRayTracingInvocationReorderProperties;
         }
 
+        if (m_Context.extensions.NV_cluster_acceleration_structure)
+        {
+            nvClusterAccelerationStructureProperties.pNext = pNext;
+            pNext = &nvClusterAccelerationStructureProperties;
+        }
+
         deviceProperties2.pNext = pNext;
 
         m_Context.physicalDevice.getProperties2(&deviceProperties2);
@@ -175,7 +189,10 @@ namespace nvrhi::vulkan
         m_Context.shadingRateProperties = shadingRateProperties;
         m_Context.opacityMicromapProperties = opacityMicromapProperties;
         m_Context.nvRayTracingInvocationReorderProperties = nvRayTracingInvocationReorderProperties;
+        m_Context.subgroupProperties = subgroupProperties;
+        m_Context.nvClusterAccelerationStructureProperties = nvClusterAccelerationStructureProperties;
         m_Context.messageCallback = desc.errorCB;
+        m_Context.logBufferLifetime = desc.logBufferLifetime;
 
         if (m_Context.extensions.EXT_opacity_micromap && !m_Context.extensions.KHR_synchronization2)
         {
@@ -327,6 +344,8 @@ namespace nvrhi::vulkan
             }
             return false;
         }
+        case Feature::RayTracingClusters:
+            return m_Context.extensions.NV_cluster_acceleration_structure;
         case Feature::ShaderSpecializations:
             return true;
         case Feature::Meshlets:
@@ -354,6 +373,24 @@ namespace nvrhi::vulkan
             return (m_Queues[uint32_t(CommandQueue::Copy)] != nullptr);
         case Feature::ConstantBufferRanges:
             return true;
+        case Feature::WaveLaneCountMinMax:
+            if (m_Context.subgroupProperties.subgroupSize == 0)
+                return false;
+            if (pInfo)
+            {
+                if (infoSize == sizeof(WaveLaneCountMinMaxFeatureInfo))
+                {
+                    auto* pWaveLaneCountMinMaxInfo = reinterpret_cast<WaveLaneCountMinMaxFeatureInfo*>(pInfo);
+                    // Only one subgroup/wave size is supported on Vulkan
+                    pWaveLaneCountMinMaxInfo->minWaveLaneCount = m_Context.subgroupProperties.subgroupSize;
+                    pWaveLaneCountMinMaxInfo->maxWaveLaneCount = m_Context.subgroupProperties.subgroupSize;
+                }
+                else
+                    utils::NotSupported();
+            }
+            return true;
+        case Feature::HeapDirectlyIndexed:
+            return m_Context.extensions.EXT_mutable_descriptor_type;
         default:
             return false;
         }
@@ -649,5 +686,10 @@ namespace nvrhi::vulkan
     void VulkanContext::warning(const std::string& message) const
     {
         messageCallback->message(MessageSeverity::Warning, message.c_str());
+    }
+
+    void VulkanContext::info(const std::string& message) const
+    {
+        messageCallback->message(MessageSeverity::Info, message.c_str());
     }
 } // namespace nvrhi::vulkan
