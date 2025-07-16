@@ -2144,6 +2144,28 @@ namespace nvrhi::validation
         return m_Device->queryFormatSupport(format);
     }
 
+    std::vector<coopvec::MatMulFormatCombo> DeviceWrapper::queryCoopVecMatMulFormats()
+    {
+        return m_Device->queryCoopVecMatMulFormats();
+    }
+
+    size_t DeviceWrapper::getCoopVecMatrixSize(coopvec::DataType type, coopvec::MatrixLayout layout, int rows, int columns)
+    {
+        if (!m_Device->queryFeatureSupport(Feature::CooperativeVectorInferencing))
+        {
+            error("getCoopVecMatrixSize: Cooperative Vectors are not supported by the device");
+            return 0;
+        }
+
+        if (rows <= 0 || columns <= 0)
+        {
+            error("getCoopVecMatrixSize: rows and columns must be positive");
+            return 0;
+        }
+        
+        return m_Device->getCoopVecMatrixSize(type, layout, rows, columns);
+    }
+
     Object DeviceWrapper::getNativeQueue(ObjectType objectType, CommandQueue queue)
     {
         return m_Device->getNativeQueue(objectType, queue);

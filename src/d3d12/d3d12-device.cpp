@@ -140,6 +140,19 @@ namespace nvrhi::d3d12
             m_SamplerFeedbackSupported = m_Options7.SamplerFeedbackTier >= D3D12_SAMPLER_FEEDBACK_TIER_0_9;
         }
 
+#if NVRHI_D3D12_WITH_COOPVEC
+        if (SUCCEEDED(m_Context.device->QueryInterface(&m_Context.devicePreview)))
+        {
+            D3D12_FEATURE_DATA_D3D12_OPTIONS_EXPERIMENTAL experimentalOptions{};
+            if (SUCCEEDED(m_Context.device->CheckFeatureSupport(D3D12_FEATURE_D3D12_OPTIONS_EXPERIMENTAL,
+                &experimentalOptions, UINT(sizeof experimentalOptions))))
+            {
+                m_CoopVecInferencingSupported = experimentalOptions.CooperativeVectorTier >= D3D12_COOPERATIVE_VECTOR_TIER_1_0;
+                m_CoopVecTrainingSupported = experimentalOptions.CooperativeVectorTier >= D3D12_COOPERATIVE_VECTOR_TIER_1_1;
+            }
+        }
+#endif
+
         if (hasOptions6)
         {
             m_VariableRateShadingSupported = m_Options6.VariableShadingRateTier >= D3D12_VARIABLE_SHADING_RATE_TIER_2;
@@ -652,6 +665,10 @@ namespace nvrhi::d3d12
                     utils::NotSupported();
             }
             return true;
+        case Feature::CooperativeVectorInferencing:
+            return m_CoopVecInferencingSupported;
+        case Feature::CooperativeVectorTraining:
+            return m_CoopVecTrainingSupported;  
         default:
             return false;
         }
@@ -703,6 +720,66 @@ namespace nvrhi::d3d12
             result = result | FormatSupport::ShaderUavStore;
 
         return result;
+    }
+
+    std::vector<coopvec::MatMulFormatCombo> Device::queryCoopVecMatMulFormats()
+    {
+#if NVRHI_D3D12_WITH_COOPVEC
+        std::vector<coopvec::MatMulFormatCombo> result;
+
+        // Get the format count
+        D3D12_FEATURE_DATA_COOPERATIVE_VECTOR coopVecData{};
+        if (m_Context.device->CheckFeatureSupport(D3D12_FEATURE_COOPERATIVE_VECTOR,
+            &coopVecData, UINT(sizeof coopVecData)) != S_OK)
+            return result;
+        
+        // Get the supported format list
+        std::vector<D3D12_COOPERATIVE_VECTOR_PROPERTIES_MUL> properties(coopVecData.MatrixVectorMulAddPropCount);
+        coopVecData.pMatrixVectorMulAddProperties = properties.data();
+        coopVecData.OuterProductAccumulatePropCount = 0;
+        coopVecData.VectorAccumulatePropCount = 0;
+        if (m_Context.device->CheckFeatureSupport(D3D12_FEATURE_COOPERATIVE_VECTOR,
+            &coopVecData, UINT(sizeof coopVecData)) != S_OK)
+            return result;
+
+        result.reserve(properties.size());
+        for (const auto& prop : properties)
+        {
+            coopvec::MatMulFormatCombo& combo = result.emplace_back();
+            combo.inputType = convertCoopVecDataType(prop.InputType);
+            combo.inputInterpretation = convertCoopVecDataType(prop.InputInterpretation);
+            combo.matrixInterpretation = convertCoopVecDataType(prop.MatrixInterpretation);
+            combo.biasInterpretation = convertCoopVecDataType(prop.BiasInterpretation);
+            combo.outputType = convertCoopVecDataType(prop.OutputType);
+            combo.transposeSupported = !!prop.TransposeSupported;
+        }
+
+        return result;
+#else
+        return {};
+#endif
+    }
+
+    size_t Device::getCoopVecMatrixSize(coopvec::DataType type, coopvec::MatrixLayout layout, int rows, int columns)
+    {
+#if NVRHI_D3D12_WITH_COOPVEC
+        D3D12_LINEAR_ALGEBRA_MATRIX_CONVERSION_DEST_INFO destInfo = {};
+        destInfo.DestLayout = convertCoopVecMatrixLayout(layout);
+        destInfo.NumRows = rows;
+        destInfo.NumColumns = columns;
+        destInfo.DestDataType = convertCoopVecDataType(type);
+        destInfo.DestStride = UINT(coopvec::getOptimalMatrixStride(type, layout, rows, columns));
+
+        m_Context.devicePreview->GetLinearAlgebraMatrixConversionDestinationInfo(&destInfo);
+
+        return destInfo.DestSize;
+#else
+        (void)type;
+        (void)layout;
+        (void)rows;
+        (void)columns;
+        return 0;
+#endif
     }
 
     Object Device::getNativeQueue(ObjectType objectType, CommandQueue queue)
