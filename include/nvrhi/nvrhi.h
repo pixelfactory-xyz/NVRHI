@@ -370,6 +370,8 @@ namespace nvrhi
         ShadingRateSurface          = 0x00100000,
         OpacityMicromapWrite        = 0x00200000,
         OpacityMicromapBuildInput   = 0x00400000,
+        ConvertCoopVecMatrixInput   = 0x00800000,
+        ConvertCoopVecMatrixOutput  = 0x01000000,
     };
 
     NVRHI_ENUM_CLASS_FLAG_OPERATORS(ResourceStates)

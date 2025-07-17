@@ -386,8 +386,8 @@ namespace nvrhi::d3d12
             if (desc.src.buffer == nullptr || desc.dst.buffer == nullptr)
                 continue;
             
-            requireBufferState(desc.src.buffer, ResourceStates::ShaderResource);
-            requireBufferState(desc.dst.buffer, ResourceStates::UnorderedAccess);
+            requireBufferState(desc.src.buffer, ResourceStates::ConvertCoopVecMatrixInput);
+            requireBufferState(desc.dst.buffer, ResourceStates::ConvertCoopVecMatrixOutput);
 
             D3D12_LINEAR_ALGEBRA_MATRIX_CONVERSION_INFO& d3dDesc = d3dConvertDescs.emplace_back();
 

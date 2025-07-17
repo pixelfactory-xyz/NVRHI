@@ -1832,7 +1832,7 @@ namespace nvrhi::validation
                 return;
             }
 
-            if (!desc.dst.buffer->getDesc().canHaveUAVs)
+            if (!desc.dst.buffer->getDesc().canHaveUAVs && m_Device->getGraphicsAPI() == GraphicsAPI::D3D12)
             {
                 std::stringstream ss;
                 ss << "convertCoopVecMatrices: dst.buffer " << utils::DebugNameToString(desc.dst.buffer->getDesc().debugName)

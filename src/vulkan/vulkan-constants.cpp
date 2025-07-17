@@ -329,6 +329,14 @@ namespace nvrhi::vulkan
             vk::PipelineStageFlagBits2::eMicromapBuildEXT,
             vk::AccessFlagBits2::eShaderRead,
             vk::ImageLayout::eUndefined },
+        { ResourceStates::ConvertCoopVecMatrixInput,
+            vk::PipelineStageFlagBits2::eConvertCooperativeVectorMatrixNV,
+            vk::AccessFlagBits2::eTransferRead,
+            vk::ImageLayout::eUndefined },
+        { ResourceStates::ConvertCoopVecMatrixOutput,
+            vk::PipelineStageFlagBits2::eConvertCooperativeVectorMatrixNV,
+            vk::AccessFlagBits2::eTransferWrite,
+            vk::ImageLayout::eUndefined },
     };
 
     ResourceStateMappingInternal convertResourceStateInternal(ResourceStates state)
