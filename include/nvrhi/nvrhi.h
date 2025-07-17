@@ -64,7 +64,7 @@ namespace nvrhi
 {
     // Version of the public API provided by NVRHI.
     // Increment this when any changes to the API are made.
-    static constexpr uint32_t c_HeaderVersion = 18;
+    static constexpr uint32_t c_HeaderVersion = 19;
 
     // Verifies that the version of the implementation matches the version of the header.
     // Returns true if they match. Use this when initializing apps using NVRHI as a shared library.
@@ -370,6 +370,8 @@ namespace nvrhi
         ShadingRateSurface          = 0x00100000,
         OpacityMicromapWrite        = 0x00200000,
         OpacityMicromapBuildInput   = 0x00400000,
+        ConvertCoopVecMatrixInput   = 0x00800000,
+        ConvertCoopVecMatrixOutput  = 0x01000000,
     };
 
     NVRHI_ENUM_CLASS_FLAG_OPERATORS(ResourceStates)
@@ -2838,6 +2840,111 @@ namespace nvrhi
     }
 
     //////////////////////////////////////////////////////////////////////////
+    // Linear Algebra / Cooperative Vectors
+    //////////////////////////////////////////////////////////////////////////
+
+    namespace coopvec
+    {
+        enum class DataType
+        {
+            UInt8,
+            SInt8,
+            UInt8Packed,
+            SInt8Packed,
+            UInt16,
+            SInt16,
+            UInt32,
+            SInt32,
+            UInt64,
+            SInt64,
+            FloatE4M3,
+            FloatE5M2,
+            Float16,
+            BFloat16,
+            Float32,
+            Float64
+        };
+
+        enum class MatrixLayout
+        {
+            RowMajor,
+            ColumnMajor,
+            InferencingOptimal,
+            TrainingOptimal
+        };
+
+        // Describes a combination of input and output data types for matrix multiplication with Cooperative Vectors.
+        // - DX12: Maps from D3D12_COOPERATIVE_VECTOR_PROPERTIES_MUL.
+        // - Vulkan: Maps from VkCooperativeVectorPropertiesNV.
+        struct MatMulFormatCombo
+        {
+            DataType inputType;
+            DataType inputInterpretation;
+            DataType matrixInterpretation;
+            DataType biasInterpretation;
+            DataType outputType;
+            bool transposeSupported;
+        };
+
+        struct DeviceFeatures
+        {
+            // Format combinations supported by the device for matrix multiplication with Cooperative Vectors.
+            std::vector<MatMulFormatCombo> matMulFormats;
+
+            // - DX12: True if FLOAT16 is supported as accumulation format for both outer product accumulation
+            //         and vector accumulation.
+            // - Vulkan: True if cooperativeVectorTrainingFloat16Accumulation is supported.
+            bool trainingFloat16 = false;
+
+            // - DX12: True if FLOAT32 is supported as accumulation format for both outer product accumulation
+            //         and vector accumulation.
+            // - Vulkan: True if cooperativeVectorTrainingFloat32Accumulation is supported.
+            bool trainingFloat32 = false;
+        };
+
+        struct MatrixLayoutDesc
+        {
+            // Buffer where the matrix is stored.
+            nvrhi::IBuffer* buffer = nullptr;
+
+            // Offset in bytes from the start of the buffer where the matrix starts.
+            uint64_t offset = 0;
+
+            // Data type of the matrix elements.
+            DataType type = DataType::UInt8;
+
+            // Layout of the matrix in memory.
+            MatrixLayout layout = MatrixLayout::RowMajor;
+
+            // Size in bytes of the matrix.
+            size_t size = 0;
+
+            // Stride in bytes between rows or coumns, depending on the layout.
+            // For RowMajor and ColumnMajor layouts, stride may be zero, in which case it is computed automatically.
+            // For InferencingOptimal and TrainingOptimal layouts, stride does not matter and should be zero.
+            size_t stride = 0;
+        };
+
+        // Describes a single matrix layout conversion operation.
+        // Used by ICommandList::convertCoopVecMatrices(...)
+        struct ConvertMatrixLayoutDesc
+        {
+            MatrixLayoutDesc src;
+            MatrixLayoutDesc dst;
+
+            uint32_t numRows = 0;
+            uint32_t numColumns = 0;
+        };
+
+        // Returns the size in bytes of a given data type.
+        NVRHI_API size_t getDataTypeSize(DataType type);
+
+        // Returns the stride for a given matrix if it's stored in a RowMajor or ColumnMajor layout.
+        // For other layouts, returns 0.
+        NVRHI_API size_t getOptimalMatrixStride(DataType type, MatrixLayout layout, uint32_t rows, uint32_t columns);
+    }
+
+    //////////////////////////////////////////////////////////////////////////
     // Misc
     //////////////////////////////////////////////////////////////////////////
 
@@ -2866,6 +2973,8 @@ namespace nvrhi
         VariableRateShading,
         VirtualResources,
         WaveLaneCountMinMax,
+        CooperativeVectorInferencing,
+        CooperativeVectorTraining
     };
 
     enum class MessageSeverity : uint8_t
@@ -3268,6 +3377,13 @@ namespace nvrhi
             uint64_t instanceBufferOffset, size_t numInstances,
             rt::AccelStructBuildFlags buildFlags = rt::AccelStructBuildFlags::None) = 0;
 
+        // Converts one or several CoopVec compatible matrices between layouts in GPU memory.
+        // Source and destination buffers must be different.
+        // - DX11: Not supported.
+        // - DX12: Maps to ConvertLinearAlgebraMatrix.
+        // - Vulkan: Maps to vkCmdConvertCooperativeVectorMatrixNV.
+        virtual void convertCoopVecMatrices(coopvec::ConvertMatrixLayoutDesc const* convertDescs, size_t numDescs) = 0;
+
         // Starts measuring GPU execution time using the provided timer query at this point in the command list.
         // Use endTimerQuery(...) to stop measusing time, and IDevice::getTimerQueryTime(...) to get the results later.
         // The same timer query cannot be used multiple times within the same command list, or in different
@@ -3498,6 +3614,12 @@ namespace nvrhi
         virtual bool queryFeatureSupport(Feature feature, void* pInfo = nullptr, size_t infoSize = 0) = 0;
 
         virtual FormatSupport queryFormatSupport(Format format) = 0;
+
+        // Returns a list of supported CoopVec matrix multiplication formats and accumulation capabilities.
+        virtual coopvec::DeviceFeatures queryCoopVecFeatures() = 0;
+
+        // Calculates and returns the on-device size for a CoopVec matrix of the given dimensions, type and layout.
+        virtual size_t getCoopVecMatrixSize(coopvec::DataType type, coopvec::MatrixLayout layout, int rows, int columns) = 0;
 
         virtual Object getNativeQueue(ObjectType objectType, CommandQueue queue) = 0;
 
