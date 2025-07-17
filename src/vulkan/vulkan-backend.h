@@ -196,6 +196,7 @@ namespace nvrhi::vulkan
         vk::PhysicalDeviceClusterAccelerationStructurePropertiesNV nvClusterAccelerationStructureProperties;
         vk::PhysicalDeviceFragmentShadingRateFeaturesKHR shadingRateFeatures;
         vk::PhysicalDeviceCooperativeVectorFeaturesNV coopVecFeatures;
+        vk::PhysicalDeviceCooperativeVectorPropertiesNV coopVecProperties;
         vk::PhysicalDeviceSubgroupProperties subgroupProperties;
         IMessageCallback* messageCallback = nullptr;
         bool logBufferLifetime = false;
@@ -1164,7 +1165,7 @@ namespace nvrhi::vulkan
         void runGarbageCollection() override;
         bool queryFeatureSupport(Feature feature, void* pInfo = nullptr, size_t infoSize = 0) override;
         FormatSupport queryFormatSupport(Format format) override;
-        std::vector<coopvec::MatMulFormatCombo> queryCoopVecMatMulFormats() override;
+        coopvec::DeviceFeatures queryCoopVecFeatures() override;
         size_t getCoopVecMatrixSize(coopvec::DataType type, coopvec::MatrixLayout layout, int rows, int columns) override;
         Object getNativeQueue(ObjectType objectType, CommandQueue queue) override;
         IMessageCallback* getMessageCallback() override { return m_Context.messageCallback; }

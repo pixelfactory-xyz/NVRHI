@@ -722,11 +722,10 @@ namespace nvrhi::d3d12
         return result;
     }
 
-    std::vector<coopvec::MatMulFormatCombo> Device::queryCoopVecMatMulFormats()
+    coopvec::DeviceFeatures Device::queryCoopVecFeatures()
     {
+        coopvec::DeviceFeatures result;
 #if NVRHI_D3D12_WITH_COOPVEC
-        std::vector<coopvec::MatMulFormatCombo> result;
-
         // Get the format count
         D3D12_FEATURE_DATA_COOPERATIVE_VECTOR coopVecData{};
         if (m_Context.device->CheckFeatureSupport(D3D12_FEATURE_COOPERATIVE_VECTOR,
@@ -734,18 +733,20 @@ namespace nvrhi::d3d12
             return result;
         
         // Get the supported format list
-        std::vector<D3D12_COOPERATIVE_VECTOR_PROPERTIES_MUL> properties(coopVecData.MatrixVectorMulAddPropCount);
-        coopVecData.pMatrixVectorMulAddProperties = properties.data();
-        coopVecData.OuterProductAccumulatePropCount = 0;
-        coopVecData.VectorAccumulatePropCount = 0;
+        std::vector<D3D12_COOPERATIVE_VECTOR_PROPERTIES_MUL> matMulProperties(coopVecData.MatrixVectorMulAddPropCount);
+        std::vector<D3D12_COOPERATIVE_VECTOR_PROPERTIES_ACCUMULATE> outerProductAccumulateProperties(coopVecData.OuterProductAccumulatePropCount);
+        std::vector<D3D12_COOPERATIVE_VECTOR_PROPERTIES_ACCUMULATE> vectorAccumulateProperties(coopVecData.VectorAccumulatePropCount);
+        coopVecData.pMatrixVectorMulAddProperties = matMulProperties.data();
+        coopVecData.pOuterProductAccumulateProperties = outerProductAccumulateProperties.data();
+        coopVecData.pVectorAccumulateProperties = vectorAccumulateProperties.data();
         if (m_Context.device->CheckFeatureSupport(D3D12_FEATURE_COOPERATIVE_VECTOR,
             &coopVecData, UINT(sizeof coopVecData)) != S_OK)
             return result;
 
-        result.reserve(properties.size());
-        for (const auto& prop : properties)
+        result.matMulFormats.reserve(matMulProperties.size());
+        for (const auto& prop : matMulProperties)
         {
-            coopvec::MatMulFormatCombo& combo = result.emplace_back();
+            coopvec::MatMulFormatCombo& combo = result.matMulFormats.emplace_back();
             combo.inputType = convertCoopVecDataType(prop.InputType);
             combo.inputInterpretation = convertCoopVecDataType(prop.InputInterpretation);
             combo.matrixInterpretation = convertCoopVecDataType(prop.MatrixInterpretation);
@@ -754,10 +755,38 @@ namespace nvrhi::d3d12
             combo.transposeSupported = !!prop.TransposeSupported;
         }
 
-        return result;
-#else
-        return {};
+        bool outerProductFloat16Supported = false;
+        bool outerProductFloat32Supported = false;
+        bool vectorAccumulateFloat16Supported = false;
+        bool vectorAccumulateFloat32Supported = false;
+
+        for (const auto& prop : outerProductAccumulateProperties)
+        {
+            if (prop.AccumulationType == D3D12_LINEAR_ALGEBRA_DATATYPE_FLOAT16)
+            {
+                outerProductFloat16Supported = true;
+            }
+            else if (prop.AccumulationType == D3D12_LINEAR_ALGEBRA_DATATYPE_FLOAT32)
+            {
+                outerProductFloat32Supported = true;
+            }
+        }
+        for (const auto& prop : vectorAccumulateProperties)
+        {
+            if (prop.AccumulationType == D3D12_LINEAR_ALGEBRA_DATATYPE_FLOAT16)
+            {
+                vectorAccumulateFloat16Supported = true;
+            }
+            else if (prop.AccumulationType == D3D12_LINEAR_ALGEBRA_DATATYPE_FLOAT32)
+            {
+                vectorAccumulateFloat32Supported = true;
+            }
+        }
+
+        result.trainingFloat16 = outerProductFloat16Supported && vectorAccumulateFloat16Supported;
+        result.trainingFloat32 = outerProductFloat32Supported && vectorAccumulateFloat32Supported;
 #endif
+        return result;
     }
 
     size_t Device::getCoopVecMatrixSize(coopvec::DataType type, coopvec::MatrixLayout layout, int rows, int columns)

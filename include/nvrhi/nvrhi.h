@@ -2886,6 +2886,13 @@ namespace nvrhi
             bool transposeSupported;
         };
 
+        struct DeviceFeatures
+        {
+            std::vector<MatMulFormatCombo> matMulFormats;
+            bool trainingFloat16 = false;
+            bool trainingFloat32 = false;
+        };
+
         struct MatrixLayoutDesc
         {
             nvrhi::IBuffer* buffer = nullptr;
@@ -3586,9 +3593,8 @@ namespace nvrhi
 
         virtual FormatSupport queryFormatSupport(Format format) = 0;
 
-        // Returns a list of supported CoopVec matrix multiplication formats,
-        // or an empty list if the feature is not supported.
-        virtual std::vector<coopvec::MatMulFormatCombo> queryCoopVecMatMulFormats() = 0;
+        // Returns a list of supported CoopVec matrix multiplication formats and accumulation capabilities.
+        virtual coopvec::DeviceFeatures queryCoopVecFeatures() = 0;
 
         // Calculates and returns the on-device size for a CoopVec matrix of the given dimensions, type and layout.
         virtual size_t getCoopVecMatrixSize(coopvec::DataType type, coopvec::MatrixLayout layout, int rows, int columns) = 0;

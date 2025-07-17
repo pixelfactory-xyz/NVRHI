@@ -129,6 +129,7 @@ namespace nvrhi::vulkan
         vk::PhysicalDeviceOpacityMicromapPropertiesEXT opacityMicromapProperties;
         vk::PhysicalDeviceRayTracingInvocationReorderPropertiesNV nvRayTracingInvocationReorderProperties;
         vk::PhysicalDeviceClusterAccelerationStructurePropertiesNV nvClusterAccelerationStructureProperties;
+        vk::PhysicalDeviceCooperativeVectorPropertiesNV nvCoopVecProperties;
         vk::PhysicalDeviceSubgroupProperties subgroupProperties;
         
         vk::PhysicalDeviceProperties2 deviceProperties2;
@@ -179,6 +180,12 @@ namespace nvrhi::vulkan
             pNext = &nvClusterAccelerationStructureProperties;
         }
 
+        if (m_Context.extensions.NV_cooperative_vector)
+        {
+            nvCoopVecProperties.pNext = pNext;
+            pNext = &nvCoopVecProperties;
+        }
+
         deviceProperties2.pNext = pNext;
 
         m_Context.physicalDevice.getProperties2(&deviceProperties2);
@@ -192,6 +199,7 @@ namespace nvrhi::vulkan
         m_Context.nvRayTracingInvocationReorderProperties = nvRayTracingInvocationReorderProperties;
         m_Context.subgroupProperties = subgroupProperties;
         m_Context.nvClusterAccelerationStructureProperties = nvClusterAccelerationStructureProperties;
+        m_Context.coopVecProperties = nvCoopVecProperties;
         m_Context.messageCallback = desc.errorCB;
         m_Context.logBufferLifetime = desc.logBufferLifetime;
 
@@ -463,9 +471,9 @@ namespace nvrhi::vulkan
         return result;
     }
 
-    std::vector<coopvec::MatMulFormatCombo> Device::queryCoopVecMatMulFormats()
+    coopvec::DeviceFeatures Device::queryCoopVecFeatures()
     {
-        std::vector<coopvec::MatMulFormatCombo> result;
+        coopvec::DeviceFeatures result;
 
         if (!m_Context.extensions.NV_cooperative_vector)
             return result;
@@ -480,10 +488,10 @@ namespace nvrhi::vulkan
         if (m_Context.physicalDevice.getCooperativeVectorPropertiesNV(&propertyCount, properties.data()) != vk::Result::eSuccess)
             return result;
         
-        result.reserve(propertyCount);
+        result.matMulFormats.reserve(propertyCount);
         for (vk::CooperativeVectorPropertiesNV const& prop : properties)
         {
-            coopvec::MatMulFormatCombo& combo = result.emplace_back();
+            coopvec::MatMulFormatCombo& combo = result.matMulFormats.emplace_back();
             combo.inputType = convertCoopVecDataType(prop.inputType);
             combo.inputInterpretation = convertCoopVecDataType(prop.inputInterpretation);
             combo.matrixInterpretation = convertCoopVecDataType(prop.matrixInterpretation);
@@ -491,6 +499,9 @@ namespace nvrhi::vulkan
             combo.outputType = convertCoopVecDataType(prop.resultType);
             combo.transposeSupported = !!prop.transpose;
         }
+
+        result.trainingFloat16 = m_Context.coopVecProperties.cooperativeVectorTrainingFloat16Accumulation;
+        result.trainingFloat32 = m_Context.coopVecProperties.cooperativeVectorTrainingFloat32Accumulation;
 
         return result;
     }

@@ -2144,9 +2144,9 @@ namespace nvrhi::validation
         return m_Device->queryFormatSupport(format);
     }
 
-    std::vector<coopvec::MatMulFormatCombo> DeviceWrapper::queryCoopVecMatMulFormats()
+    coopvec::DeviceFeatures DeviceWrapper::queryCoopVecFeatures()
     {
-        return m_Device->queryCoopVecMatMulFormats();
+        return m_Device->queryCoopVecFeatures();
     }
 
     size_t DeviceWrapper::getCoopVecMatrixSize(coopvec::DataType type, coopvec::MatrixLayout layout, int rows, int columns)
