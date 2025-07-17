@@ -410,7 +410,7 @@ namespace nvrhi::d3d11
         return coopvec::DeviceFeatures();
     }
     
-    size_t Device::getCoopVecMatrixSize(coopvec::DataType type, coopvec::MatrixLayout layout, int rows, int columns)
+    size_t Device::getCoopVecMatrixSize(coopvec::DataType, coopvec::MatrixLayout, int, int)
     {
         utils::NotSupported();
         return 0;
