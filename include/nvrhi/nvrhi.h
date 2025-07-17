@@ -2888,18 +2888,40 @@ namespace nvrhi
 
         struct DeviceFeatures
         {
+            // Format combinations supported by the device for matrix multiplication with Cooperative Vectors.
             std::vector<MatMulFormatCombo> matMulFormats;
+
+            // - DX12: True if FLOAT16 is supported as accumulation format for both outer product accumulation
+            //         and vector accumulation.
+            // - Vulkan: True if cooperativeVectorTrainingFloat16Accumulation is supported.
             bool trainingFloat16 = false;
+
+            // - DX12: True if FLOAT32 is supported as accumulation format for both outer product accumulation
+            //         and vector accumulation.
+            // - Vulkan: True if cooperativeVectorTrainingFloat32Accumulation is supported.
             bool trainingFloat32 = false;
         };
 
         struct MatrixLayoutDesc
         {
+            // Buffer where the matrix is stored.
             nvrhi::IBuffer* buffer = nullptr;
+
+            // Offset in bytes from the start of the buffer where the matrix starts.
             uint64_t offset = 0;
+
+            // Data type of the matrix elements.
             DataType type = DataType::UInt8;
+
+            // Layout of the matrix in memory.
             MatrixLayout layout = MatrixLayout::RowMajor;
+
+            // Size in bytes of the matrix.
             size_t size = 0;
+
+            // Stride in bytes between rows or coumns, depending on the layout.
+            // For RowMajor and ColumnMajor layouts, stride may be zero, in which case it is computed automatically.
+            // For InferencingOptimal and TrainingOptimal layouts, stride does not matter and should be zero.
             size_t stride = 0;
         };
 
