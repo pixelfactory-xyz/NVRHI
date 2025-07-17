@@ -476,14 +476,14 @@ namespace nvrhi::vulkan
         if (propertyCount == 0)
             return result;
 
-        std::vector<vk::CooperativeVectorPropertiesNV> properties;
+        std::vector<vk::CooperativeVectorPropertiesNV> properties(propertyCount);
         if (m_Context.physicalDevice.getCooperativeVectorPropertiesNV(&propertyCount, properties.data()) != vk::Result::eSuccess)
             return result;
         
         result.reserve(propertyCount);
         for (vk::CooperativeVectorPropertiesNV const& prop : properties)
         {
-            coopvec::MatMulFormatCombo combo;
+            coopvec::MatMulFormatCombo& combo = result.emplace_back();
             combo.inputType = convertCoopVecDataType(prop.inputType);
             combo.inputInterpretation = convertCoopVecDataType(prop.inputInterpretation);
             combo.matrixInterpretation = convertCoopVecDataType(prop.matrixInterpretation);
