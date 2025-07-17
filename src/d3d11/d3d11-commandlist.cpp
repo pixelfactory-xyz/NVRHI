@@ -227,4 +227,10 @@ namespace nvrhi::d3d11
     {
         utils::NotSupported();
     }
+
+    void CommandList::convertCoopVecMatrices(coopvec::ConvertMatrixLayoutDesc const* convertDescs, size_t numDescs)
+    {
+        utils::NotSupported();
+    }
+
 } // namespace nvrhi::d3d11
