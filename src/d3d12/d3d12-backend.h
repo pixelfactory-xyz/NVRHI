@@ -66,6 +66,12 @@
 #define NVRHI_WITH_NVAPI_LSS (0)
 #endif
 
+#if D3D12_PREVIEW_SDK_VERSION >= 717
+#define NVRHI_D3D12_WITH_COOPVEC (1)
+#else
+#define NVRHI_D3D12_WITH_COOPVEC (0)
+#endif
+
 #include <bitset>
 #include <memory>
 #include <queue>
@@ -108,6 +114,11 @@ namespace nvrhi::d3d12
     UINT convertSamplerReductionType(SamplerReductionType reductionType);
     D3D12_SHADING_RATE convertPixelShadingRate(VariableShadingRate shadingRate);
     D3D12_SHADING_RATE_COMBINER convertShadingRateCombiner(ShadingRateCombiner combiner);
+#if NVRHI_D3D12_WITH_COOPVEC
+    D3D12_LINEAR_ALGEBRA_DATATYPE convertCoopVecDataType(coopvec::DataType type);
+    coopvec::DataType convertCoopVecDataType(D3D12_LINEAR_ALGEBRA_DATATYPE type);
+    D3D12_LINEAR_ALGEBRA_MATRIX_LAYOUT convertCoopVecMatrixLayout(coopvec::MatrixLayout layout);
+#endif
 
     void WaitForFence(ID3D12Fence* fence, uint64_t value, HANDLE event);
     uint32_t calcSubresource(uint32_t MipSlice, uint32_t ArraySlice, uint32_t PlaneSlice, uint32_t MipLevels, uint32_t ArraySize);
@@ -121,6 +132,9 @@ namespace nvrhi::d3d12
         RefCountPtr<ID3D12Device2> device2;
         RefCountPtr<ID3D12Device5> device5;
         RefCountPtr<ID3D12Device8> device8;
+#if NVRHI_D3D12_WITH_COOPVEC
+        RefCountPtr<ID3D12DevicePreview> devicePreview;
+#endif
 #ifdef NVRHI_WITH_RTXMU
         std::unique_ptr<rtxmu::DxAccelStructManager> rtxMemUtil;
 #endif
@@ -886,6 +900,9 @@ namespace nvrhi::d3d12
         RefCountPtr<ID3D12GraphicsCommandList> commandList;
         RefCountPtr<ID3D12GraphicsCommandList4> commandList4;
         RefCountPtr<ID3D12GraphicsCommandList6> commandList6;
+#if NVRHI_D3D12_WITH_COOPVEC
+        RefCountPtr<ID3D12GraphicsCommandListPreview> commandListPreview;
+#endif
         uint64_t lastSubmittedInstance = 0;
 #if NVRHI_WITH_AFTERMATH
         GFSDK_Aftermath_ContextHandle aftermathContext;
@@ -977,6 +994,8 @@ namespace nvrhi::d3d12
         void buildTopLevelAccelStructFromBuffer(rt::IAccelStruct* as, nvrhi::IBuffer* instanceBuffer, uint64_t instanceBufferOffset, size_t numInstances,
             rt::AccelStructBuildFlags buildFlags = rt::AccelStructBuildFlags::None) override;
         void executeMultiIndirectClusterOperation(const rt::cluster::OperationDesc& desc) override;
+
+        void convertCoopVecMatrices(coopvec::ConvertMatrixLayoutDesc const* convertDescs, size_t numDescs) override;
 
         void beginTimerQuery(ITimerQuery* query) override;
         void endTimerQuery(ITimerQuery* query) override;
@@ -1184,6 +1203,8 @@ namespace nvrhi::d3d12
         void runGarbageCollection() override;
         bool queryFeatureSupport(Feature feature, void* pInfo = nullptr, size_t infoSize = 0) override;
         FormatSupport queryFormatSupport(Format format) override;
+        coopvec::DeviceFeatures queryCoopVecFeatures() override;
+        size_t getCoopVecMatrixSize(coopvec::DataType type, coopvec::MatrixLayout layout, int rows, int columns) override;
         Object getNativeQueue(ObjectType objectType, CommandQueue queue) override;
         IMessageCallback* getMessageCallback() override { return m_Context.messageCallback; }
         bool isAftermathEnabled() override { return m_AftermathEnabled; }
@@ -1236,6 +1257,8 @@ namespace nvrhi::d3d12
         bool m_SamplerFeedbackSupported = false;
         bool m_AftermathEnabled = false;
         bool m_HeapDirectlyIndexedEnabled = false;
+        bool m_CoopVecInferencingSupported = false;
+        bool m_CoopVecTrainingSupported = false;
         AftermathCrashDumpHelper m_AftermathCrashDumpHelper;
 
 

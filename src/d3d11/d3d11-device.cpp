@@ -404,4 +404,16 @@ namespace nvrhi::d3d11
         return SamplerHandle::Create(sampler);
     }
 
+    coopvec::DeviceFeatures Device::queryCoopVecFeatures()
+    {
+        utils::NotSupported();
+        return coopvec::DeviceFeatures();
+    }
+    
+    size_t Device::getCoopVecMatrixSize(coopvec::DataType, coopvec::MatrixLayout, int, int)
+    {
+        utils::NotSupported();
+        return 0;
+    }
+
 } // namespace nvrhi::d3d11

@@ -91,6 +91,7 @@ namespace nvrhi::vulkan
             { VK_NV_RAY_TRACING_INVOCATION_REORDER_EXTENSION_NAME, &m_Context.extensions.NV_ray_tracing_invocation_reorder },
             { VK_NV_CLUSTER_ACCELERATION_STRUCTURE_EXTENSION_NAME, &m_Context.extensions.NV_cluster_acceleration_structure },
             { VK_EXT_MUTABLE_DESCRIPTOR_TYPE_EXTENSION_NAME, &m_Context.extensions.EXT_mutable_descriptor_type },
+            { VK_NV_COOPERATIVE_VECTOR_EXTENSION_NAME, &m_Context.extensions.NV_cooperative_vector },
 #if NVRHI_WITH_AFTERMATH
             { VK_NV_DEVICE_DIAGNOSTIC_CHECKPOINTS_EXTENSION_NAME, &m_Context.extensions.NV_device_diagnostic_checkpoints },
             { VK_NV_DEVICE_DIAGNOSTICS_CONFIG_EXTENSION_NAME, &m_Context.extensions.NV_device_diagnostics_config }
@@ -128,6 +129,7 @@ namespace nvrhi::vulkan
         vk::PhysicalDeviceOpacityMicromapPropertiesEXT opacityMicromapProperties;
         vk::PhysicalDeviceRayTracingInvocationReorderPropertiesNV nvRayTracingInvocationReorderProperties;
         vk::PhysicalDeviceClusterAccelerationStructurePropertiesNV nvClusterAccelerationStructureProperties;
+        vk::PhysicalDeviceCooperativeVectorPropertiesNV nvCoopVecProperties;
         vk::PhysicalDeviceSubgroupProperties subgroupProperties;
         
         vk::PhysicalDeviceProperties2 deviceProperties2;
@@ -178,6 +180,12 @@ namespace nvrhi::vulkan
             pNext = &nvClusterAccelerationStructureProperties;
         }
 
+        if (m_Context.extensions.NV_cooperative_vector)
+        {
+            nvCoopVecProperties.pNext = pNext;
+            pNext = &nvCoopVecProperties;
+        }
+
         deviceProperties2.pNext = pNext;
 
         m_Context.physicalDevice.getProperties2(&deviceProperties2);
@@ -191,6 +199,7 @@ namespace nvrhi::vulkan
         m_Context.nvRayTracingInvocationReorderProperties = nvRayTracingInvocationReorderProperties;
         m_Context.subgroupProperties = subgroupProperties;
         m_Context.nvClusterAccelerationStructureProperties = nvClusterAccelerationStructureProperties;
+        m_Context.coopVecProperties = nvCoopVecProperties;
         m_Context.messageCallback = desc.errorCB;
         m_Context.logBufferLifetime = desc.logBufferLifetime;
 
@@ -203,10 +212,15 @@ namespace nvrhi::vulkan
         if (m_Context.extensions.KHR_fragment_shading_rate)
         {
             vk::PhysicalDeviceFeatures2 deviceFeatures2;
-            vk::PhysicalDeviceFragmentShadingRateFeaturesKHR shadingRateFeatures;
-            deviceFeatures2.setPNext(&shadingRateFeatures);
+            deviceFeatures2.setPNext(&m_Context.shadingRateFeatures);
             m_Context.physicalDevice.getFeatures2(&deviceFeatures2);
-            m_Context.shadingRateFeatures = shadingRateFeatures;
+        }
+
+        if (m_Context.extensions.NV_cooperative_vector)
+        {
+            vk::PhysicalDeviceFeatures2 deviceFeatures2;
+            deviceFeatures2.setPNext(&m_Context.coopVecFeatures);
+            m_Context.physicalDevice.getFeatures2(&deviceFeatures2);
         }
 #ifdef NVRHI_WITH_RTXMU
         if (m_Context.extensions.KHR_acceleration_structure)
@@ -391,6 +405,10 @@ namespace nvrhi::vulkan
             return true;
         case Feature::HeapDirectlyIndexed:
             return m_Context.extensions.EXT_mutable_descriptor_type;
+        case Feature::CooperativeVectorInferencing:
+            return m_Context.extensions.NV_cooperative_vector && m_Context.coopVecFeatures.cooperativeVector;
+        case Feature::CooperativeVectorTraining:
+            return m_Context.extensions.NV_cooperative_vector && m_Context.coopVecFeatures.cooperativeVectorTraining;
         default:
             return false;
         }
@@ -451,6 +469,69 @@ namespace nvrhi::vulkan
         }
 
         return result;
+    }
+
+    coopvec::DeviceFeatures Device::queryCoopVecFeatures()
+    {
+        coopvec::DeviceFeatures result;
+
+        if (!m_Context.extensions.NV_cooperative_vector)
+            return result;
+
+        uint32_t propertyCount = 0;
+        if (m_Context.physicalDevice.getCooperativeVectorPropertiesNV(&propertyCount, nullptr) != vk::Result::eSuccess)
+            return result;
+        if (propertyCount == 0)
+            return result;
+
+        std::vector<vk::CooperativeVectorPropertiesNV> properties(propertyCount);
+        if (m_Context.physicalDevice.getCooperativeVectorPropertiesNV(&propertyCount, properties.data()) != vk::Result::eSuccess)
+            return result;
+        
+        result.matMulFormats.reserve(propertyCount);
+        for (vk::CooperativeVectorPropertiesNV const& prop : properties)
+        {
+            coopvec::MatMulFormatCombo& combo = result.matMulFormats.emplace_back();
+            combo.inputType = convertCoopVecDataType(prop.inputType);
+            combo.inputInterpretation = convertCoopVecDataType(prop.inputInterpretation);
+            combo.matrixInterpretation = convertCoopVecDataType(prop.matrixInterpretation);
+            combo.biasInterpretation = convertCoopVecDataType(prop.biasInterpretation);
+            combo.outputType = convertCoopVecDataType(prop.resultType);
+            combo.transposeSupported = !!prop.transpose;
+        }
+
+        result.trainingFloat16 = m_Context.coopVecProperties.cooperativeVectorTrainingFloat16Accumulation;
+        result.trainingFloat32 = m_Context.coopVecProperties.cooperativeVectorTrainingFloat32Accumulation;
+
+        return result;
+    }
+
+    size_t Device::getCoopVecMatrixSize(coopvec::DataType type, coopvec::MatrixLayout layout, int rows, int columns)
+    {
+        if (!m_Context.extensions.NV_cooperative_vector)
+            return 0;
+
+        size_t dstSize = 0;
+        size_t dataTypeSize = coopvec::getDataTypeSize(type);
+        vk::ConvertCooperativeVectorMatrixInfoNV convertInfo = {};
+        convertInfo.sType = vk::StructureType::eConvertCooperativeVectorMatrixInfoNV;
+        convertInfo.srcSize = dataTypeSize * rows * columns;
+        convertInfo.srcData.hostAddress = nullptr;
+        convertInfo.pDstSize = &dstSize;
+        convertInfo.dstData.hostAddress = nullptr;
+        convertInfo.srcComponentType = vk::ComponentTypeKHR(convertCoopVecDataType(type));
+        convertInfo.dstComponentType = convertInfo.srcComponentType;
+        convertInfo.numRows = rows;
+        convertInfo.numColumns = columns;
+        convertInfo.srcLayout = vk::CooperativeVectorMatrixLayoutNV::eRowMajor;
+        convertInfo.srcStride = dataTypeSize * columns;
+        convertInfo.dstLayout = convertCoopVecMatrixLayout(layout);
+        convertInfo.dstStride = coopvec::getOptimalMatrixStride(type, layout, rows, columns);
+
+        if (m_Context.device.convertCooperativeVectorMatrixNV(&convertInfo) == vk::Result::eSuccess)
+            return dstSize;
+
+        return 0;
     }
 
     Object Device::getNativeQueue(ObjectType objectType, CommandQueue queue)

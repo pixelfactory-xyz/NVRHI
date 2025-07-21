@@ -118,6 +118,9 @@ namespace nvrhi::vulkan
     vk::Extent2D convertFragmentShadingRate(VariableShadingRate shadingRate);
     vk::FragmentShadingRateCombinerOpKHR convertShadingRateCombiner(ShadingRateCombiner combiner);
     vk::DescriptorType convertResourceType(ResourceType type);
+    vk::ComponentTypeKHR convertCoopVecDataType(coopvec::DataType type);
+    coopvec::DataType convertCoopVecDataType(vk::ComponentTypeKHR type);
+    vk::CooperativeVectorMatrixLayoutNV convertCoopVecMatrixLayout(coopvec::MatrixLayout layout);
 
     void countSpecializationConstants(
         Shader* shader,
@@ -176,6 +179,7 @@ namespace nvrhi::vulkan
             bool NV_cluster_acceleration_structure = false;
             bool EXT_mutable_descriptor_type = false;
             bool EXT_debug_utils = false;
+            bool NV_cooperative_vector = false;
 #if NVRHI_WITH_AFTERMATH
             bool NV_device_diagnostic_checkpoints = false;
             bool NV_device_diagnostics_config= false;
@@ -191,6 +195,8 @@ namespace nvrhi::vulkan
         vk::PhysicalDeviceRayTracingInvocationReorderPropertiesNV nvRayTracingInvocationReorderProperties;
         vk::PhysicalDeviceClusterAccelerationStructurePropertiesNV nvClusterAccelerationStructureProperties;
         vk::PhysicalDeviceFragmentShadingRateFeaturesKHR shadingRateFeatures;
+        vk::PhysicalDeviceCooperativeVectorFeaturesNV coopVecFeatures;
+        vk::PhysicalDeviceCooperativeVectorPropertiesNV coopVecProperties;
         vk::PhysicalDeviceSubgroupProperties subgroupProperties;
         IMessageCallback* messageCallback = nullptr;
         bool logBufferLifetime = false;
@@ -1159,6 +1165,8 @@ namespace nvrhi::vulkan
         void runGarbageCollection() override;
         bool queryFeatureSupport(Feature feature, void* pInfo = nullptr, size_t infoSize = 0) override;
         FormatSupport queryFormatSupport(Format format) override;
+        coopvec::DeviceFeatures queryCoopVecFeatures() override;
+        size_t getCoopVecMatrixSize(coopvec::DataType type, coopvec::MatrixLayout layout, int rows, int columns) override;
         Object getNativeQueue(ObjectType objectType, CommandQueue queue) override;
         IMessageCallback* getMessageCallback() override { return m_Context.messageCallback; }
         bool isAftermathEnabled() override { return m_AftermathEnabled; }
@@ -1254,6 +1262,8 @@ namespace nvrhi::vulkan
         void buildTopLevelAccelStructFromBuffer(rt::IAccelStruct* as, nvrhi::IBuffer* instanceBuffer, uint64_t instanceBufferOffset, size_t numInstances,
             rt::AccelStructBuildFlags buildFlags = rt::AccelStructBuildFlags::None) override;
         void executeMultiIndirectClusterOperation(const rt::cluster::OperationDesc& desc) override;
+
+        void convertCoopVecMatrices(coopvec::ConvertMatrixLayoutDesc const* convertDescs, size_t numDescs) override;
 
         void beginTimerQuery(ITimerQuery* query) override;
         void endTimerQuery(ITimerQuery* query) override;

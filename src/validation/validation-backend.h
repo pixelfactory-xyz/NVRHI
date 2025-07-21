@@ -242,6 +242,8 @@ namespace nvrhi::validation
             rt::AccelStructBuildFlags buildFlags = rt::AccelStructBuildFlags::None) override;
         void executeMultiIndirectClusterOperation(const rt::cluster::OperationDesc& desc) override;
 
+        void convertCoopVecMatrices(coopvec::ConvertMatrixLayoutDesc const* convertDescs, size_t numDescs) override;
+
         void beginTimerQuery(ITimerQuery* query) override;
         void endTimerQuery(ITimerQuery* query) override;
 
@@ -383,6 +385,8 @@ namespace nvrhi::validation
         void runGarbageCollection() override;
         bool queryFeatureSupport(Feature feature, void* pInfo = nullptr, size_t infoSize = 0) override;
         FormatSupport queryFormatSupport(Format format) override;
+        coopvec::DeviceFeatures queryCoopVecFeatures() override;
+        size_t getCoopVecMatrixSize(coopvec::DataType type, coopvec::MatrixLayout layout, int rows, int columns) override;
         Object getNativeQueue(ObjectType objectType, CommandQueue queue) override;
         IMessageCallback* getMessageCallback() override;
         bool isAftermathEnabled() override;
