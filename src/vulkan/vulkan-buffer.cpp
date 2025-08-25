@@ -211,6 +211,13 @@ namespace nvrhi::vulkan
         buffer->buffer = VkBuffer(_buffer.integer);
         buffer->desc = desc;
         buffer->managed = false;
+        
+        if (m_Context.extensions.buffer_device_address)
+        {
+            auto addressInfo = vk::BufferDeviceAddressInfo().setBuffer(buffer->buffer);
+
+            buffer->deviceAddress = m_Context.device.getBufferAddress(addressInfo);
+        }
 
         return BufferHandle::Create(buffer);
     }
