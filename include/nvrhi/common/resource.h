@@ -109,6 +109,7 @@ namespace nvrhi
     public:
         virtual unsigned long AddRef() = 0;
         virtual unsigned long Release() = 0;
+        virtual unsigned long GetRefCount() = 0;
 
         // Returns a native object or interface, for example ID3D11Device*, or nullptr if the requested interface is unavailable.
         // Does *not* AddRef the returned interface.
@@ -386,6 +387,11 @@ namespace nvrhi
                 delete this;
             }
             return result;
+        }
+
+        virtual unsigned long GetRefCount() override 
+        {
+            return m_refCount.load();
         }
     };
 
