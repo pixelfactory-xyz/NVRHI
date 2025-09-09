@@ -666,6 +666,154 @@ namespace nvrhi::validation
 
     FramebufferHandle DeviceWrapper::createFramebuffer(const FramebufferDesc& desc)
     {
+        uint32_t width = 0;
+        uint32_t height = 0;
+        uint32_t arraySize = 0;
+        uint32_t sampleCount = 0;
+
+        if (desc.depthAttachment.texture)
+        {
+            TextureDesc const& d = desc.depthAttachment.texture->getDesc();
+
+            TextureSubresourceSet const subresources = desc.depthAttachment.subresources.resolve(d, true);
+
+            uint32_t const mipWidth = std::max(d.width >> subresources.baseMipLevel, 1u);
+            uint32_t const mipHeight = std::max(d.height >> subresources.baseMipLevel, 1u);
+
+            width = mipWidth;
+            height = mipHeight;
+            arraySize = subresources.numArraySlices;
+            sampleCount = d.sampleCount;
+
+            if (!d.isRenderTarget)
+            {
+                std::stringstream ss;
+                ss << "Depth attachment texture " << utils::DebugNameToString(d.debugName)
+                    << " must be created with isRenderTarget = true";
+                error(ss.str());
+                return nullptr;
+            }
+
+            FormatInfo const& formatInfo = getFormatInfo(d.format);
+            if (formatInfo.kind != FormatKind::DepthStencil)
+            {
+                std::stringstream ss;
+                ss << "Depth attachment texture " << utils::DebugNameToString(d.debugName) << " has a format "
+                    << formatInfo.name << " that does not support depth or stencil";
+                error(ss.str());
+                return nullptr;
+            }
+        }
+
+        for (size_t i = 0; i < desc.colorAttachments.size(); ++i)
+        {
+            FramebufferAttachment const& att = desc.colorAttachments[i];
+            if (!att.texture)
+            {
+                std::stringstream ss;
+                ss << "Color attachment " << i << " is NULL";
+                error(ss.str());
+                return nullptr;
+            }
+
+            TextureDesc const& d = att.texture->getDesc();
+            if (!d.isRenderTarget)
+            {
+                std::stringstream ss;
+                ss << "Color attachment  " << i << " texture " << utils::DebugNameToString(d.debugName)
+                    << " must be created with isRenderTarget = true";
+                error(ss.str());
+                return nullptr;
+            }
+
+            TextureSubresourceSet const subresources = att.subresources.resolve(d, true);
+
+            uint32_t const mipWidth = std::max(d.width >> subresources.baseMipLevel, 1u);
+            uint32_t const mipHeight = std::max(d.height >> subresources.baseMipLevel, 1u);
+
+            if (!width || !height || !arraySize || !sampleCount)
+            {
+                width = mipWidth;
+                height = mipHeight;
+                arraySize = subresources.numArraySlices;
+                sampleCount = d.sampleCount;
+            }
+            else
+            {
+                if (width != mipWidth ||
+                    height != mipHeight ||
+                    arraySize != subresources.numArraySlices ||
+                    sampleCount != d.sampleCount)
+                {
+                    std::stringstream ss;
+                    ss << "Color attachment " << i << " texture " << utils::DebugNameToString(d.debugName)
+                        << " has dimensions " << mipWidth << "x" << mipHeight << " with " << subresources.numArraySlices
+                        << " array slice(s) and " << sampleCount << " sample(s), which do not match the dimensions of depth"
+                        << " or previous color attachments " << width << "x" << height << " with " << arraySize
+                        << " array slice(s) and " << sampleCount << " sample(s)";
+                    error(ss.str());
+                    return nullptr;
+                }
+            }
+
+            FormatInfo const& formatInfo = getFormatInfo(d.format);
+            if (!formatInfo.hasRed)
+            {
+                std::stringstream ss;
+                ss << "Color attachment " << i << " texture " << utils::DebugNameToString(d.debugName) << " has a format "
+                    << formatInfo.name << " that does not have color or alpha channels";
+                error(ss.str());
+                return nullptr;
+            }
+
+            if (formatInfo.blockSize > 1)
+            {
+                std::stringstream ss;
+                ss << "Color attachment " << i << " texture " << utils::DebugNameToString(d.debugName) << " has a format "
+                    << formatInfo.name << " that is block-compressed. Block-compressed formats are not supported for render targets.";
+                error(ss.str());
+                return nullptr;
+            }
+        }
+
+        if (desc.shadingRateAttachment.texture)
+        {
+            TextureDesc const& d = desc.shadingRateAttachment.texture->getDesc();
+
+            // The shading rate attachment must be an R8_UINT format and have a single sample.
+            // Its dimensions may be different (smaller) from the color attachments.
+            // Not sure about array size or how VRS works with rendering into a texture array.
+
+            if (d.format != Format::R8_UINT)
+            {
+                FormatInfo const& formatInfo = getFormatInfo(d.format);
+
+                std::stringstream ss;
+                ss << "Shading rate attachment texture " << utils::DebugNameToString(d.debugName) << " has a format "
+                    << formatInfo.name << " that is not R8_UINT";
+                error(ss.str());
+                return nullptr;
+            }
+
+            if (d.sampleCount != 1)
+            {
+                std::stringstream ss;
+                ss << "Shading rate attachment texture " << utils::DebugNameToString(d.debugName) << " has a sample count "
+                    << d.sampleCount << " that is not 1";
+                error(ss.str());
+                return nullptr;
+            }
+
+            if (!d.isShadingRateSurface)
+            {
+                std::stringstream ss;
+                ss << "Shading rate attachment texture " << utils::DebugNameToString(d.debugName)
+                    << " must be created with isShadingRateSurface = true";
+                error(ss.str());
+                return nullptr;
+            }
+        }
+
         return m_Device->createFramebuffer(desc);
     }
 
