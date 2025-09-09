@@ -3783,4 +3783,17 @@ namespace std
             return hash;
         }
     };
+    
+    template<> struct hash<nvrhi::VariableRateShadingState>
+    {
+        std::size_t operator()(nvrhi::VariableRateShadingState const& s) const noexcept
+        {
+            size_t hash = 0;
+            nvrhi::hash_combine(hash, s.enabled);
+            nvrhi::hash_combine(hash, s.shadingRate);
+            nvrhi::hash_combine(hash, s.pipelinePrimitiveCombiner);
+            nvrhi::hash_combine(hash, s.imageCombiner);
+            return hash;
+        }
+    };
 }
