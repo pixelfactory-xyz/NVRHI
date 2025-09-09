@@ -66,8 +66,15 @@ namespace nvrhi::vulkan
         return (vk::MicromapUsageEXT*)counts;
     }
 
-    static void convertBottomLevelGeometry(const rt::GeometryDesc& src, vk::AccelerationStructureGeometryKHR& dst, vk::AccelerationStructureTrianglesOpacityMicromapEXT& dstOmm,
-        uint32_t& maxPrimitiveCount, vk::AccelerationStructureBuildRangeInfoKHR* pRange, const VulkanContext& context)
+    static void convertBottomLevelGeometry(
+        const rt::GeometryDesc& src,
+        vk::AccelerationStructureGeometryKHR& dst,
+        vk::AccelerationStructureTrianglesOpacityMicromapEXT& dstOmm,
+        uint32_t& maxPrimitiveCount,
+        vk::AccelerationStructureBuildRangeInfoKHR* pRange,
+        const VulkanContext& context,
+        UploadManager* uploadManager,
+        uint64_t currentVersion)
     {
         switch (src.geometryType)
         {
@@ -107,7 +114,42 @@ namespace nvrhi::vulkan
 
             if (src.useTransform)
             {
-                dstt.setTransformData(vk::DeviceOrHostAddressConstKHR().setHostAddress(&src.transform));
+                // The alignment of the transforms is supposed to be 16 bytes, as reported by the validation layer,
+                // but there doesn't seem to be the appropriate constant or device property.
+                constexpr size_t TransformAlignment = 16;
+
+                if (uploadManager)
+                {
+                    // Suballocate a small piece of the upload buffer to copy the transform to the GPU.
+                    Buffer* uploadBuffer = nullptr;
+                    uint64_t uploadOffset = 0;
+                    void* uploadCpuVA = nullptr;
+
+                    if (uploadManager->suballocateBuffer(sizeof(vk::TransformMatrixKHR), &uploadBuffer, &uploadOffset,
+                        &uploadCpuVA, currentVersion, uint32_t(TransformAlignment)))
+                    {
+                        static_assert(sizeof(vk::TransformMatrixKHR) == sizeof(rt::AffineTransform),
+                            "The sizes of different transform types must match");
+                        memcpy(uploadCpuVA, &src.transform, sizeof(vk::TransformMatrixKHR));
+                        dstt.setTransformData(getBufferAddress(uploadBuffer, uploadOffset));
+                    }
+                    else
+                    {
+                        context.error("Couldn't suballocate an upload buffer for geometry transform.");
+                    }
+                }
+                else
+                {
+                    // For build size queries, set a non-null dummy address for the transform.
+                    // https://registry.khronos.org/vulkan/specs/latest/man/html/vkGetAccelerationStructureBuildSizesKHR.html
+                    //
+                    // >> The srcAccelerationStructure, dstAccelerationStructure, and mode members of pBuildInfo are
+                    //    ignored. Any VkDeviceOrHostAddressKHR or VkDeviceOrHostAddressConstKHR members of pBuildInfo
+                    //    are ignored by this command, except that the hostAddress member of
+                    //    VkAccelerationStructureGeometryTrianglesDataKHR::transformData will be examined to check
+                    //    if it is NULL.
+                    dstt.setTransformData(vk::DeviceOrHostAddressConstKHR().setHostAddress((void*)TransformAlignment));
+                }
             }
 
             if (srct.opacityMicromap)
@@ -243,7 +285,8 @@ namespace nvrhi::vulkan
 
                 for (size_t i = 0; i < desc.bottomLevelGeometries.size(); i++)
                 {
-                    convertBottomLevelGeometry(desc.bottomLevelGeometries[i],  geometries[i], omms[i], maxPrimitiveCounts[i], nullptr, m_Context);
+                    convertBottomLevelGeometry(desc.bottomLevelGeometries[i],  geometries[i], omms[i], maxPrimitiveCounts[i],
+                        nullptr, m_Context, nullptr, 0);
                 }
 
                 buildInfo.setType(vk::AccelerationStructureTypeKHR::eBottomLevel);
@@ -565,9 +608,12 @@ namespace nvrhi::vulkan
         maxPrimitiveCounts.resize(numGeometries);
         buildRanges.resize(numGeometries);
 
+        uint64_t currentVersion = MakeVersion(m_CurrentCmdBuf->recordingID, m_CommandListParameters.queueType, false);
+
         for (size_t i = 0; i < numGeometries; i++)
         {
-            convertBottomLevelGeometry(pGeometries[i], geometries[i], omms[i], maxPrimitiveCounts[i], &buildRanges[i], m_Context);
+            convertBottomLevelGeometry(pGeometries[i], geometries[i], omms[i], maxPrimitiveCounts[i], &buildRanges[i],
+                m_Context, m_UploadManager.get(), currentVersion);
 
             const rt::GeometryDesc& src = pGeometries[i];
 
@@ -676,7 +722,6 @@ namespace nvrhi::vulkan
 
         Buffer* scratchBuffer = nullptr;
         uint64_t scratchOffset = 0;
-        uint64_t currentVersion = MakeVersion(m_CurrentCmdBuf->recordingID, m_CommandListParameters.queueType, false);
 
         bool allocated = m_ScratchManager->suballocateBuffer(scratchSize, &scratchBuffer, &scratchOffset, nullptr,
             currentVersion, m_Context.accelStructProperties.minAccelerationStructureScratchOffsetAlignment);
