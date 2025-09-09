@@ -458,6 +458,14 @@ namespace nvrhi
         constexpr TextureDesc& setInitialState(ResourceStates value) { initialState = value; return *this; }
         constexpr TextureDesc& setKeepInitialState(bool value) { keepInitialState = value; return *this; }
         constexpr TextureDesc& setSharedResourceFlags(SharedResourceFlags value) { sharedResourceFlags = value; return *this; }
+        
+        // Equivalent to .setInitialState(_initialState).setKeepInitialState(true)
+        constexpr TextureDesc& enableAutomaticStateTracking(ResourceStates _initialState)
+        {
+            initialState = _initialState;
+            keepInitialState = true;
+            return *this;
+        }
     };
 
     // Describes a 2D or 3D section of a single mip level, single array slice of a texture.
@@ -713,6 +721,14 @@ namespace nvrhi
         constexpr BufferDesc& setInitialState(ResourceStates value) { initialState = value; return *this; }
         constexpr BufferDesc& setKeepInitialState(bool value) { keepInitialState = value; return *this; }
         constexpr BufferDesc& setCpuAccess(CpuAccessMode value) { cpuAccess = value; return *this; }
+
+        // Equivalent to .setInitialState(_initialState).setKeepInitialState(true)
+        constexpr BufferDesc& enableAutomaticStateTracking(ResourceStates _initialState)
+        {
+            initialState = _initialState;
+            keepInitialState = true;
+            return *this;
+        }
     };
 
     struct BufferRange

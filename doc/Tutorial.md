@@ -203,8 +203,7 @@ static const Vertex g_Vertices[] = {
 auto vertexBufferDesc = nvrhi::BufferDesc()
     .setByteSize(sizeof(g_Vertices))
     .setIsVertexBuffer(true)
-    .setInitialState(nvrhi::ResourceStates::VertexBuffer)
-    .setKeepInitialState(true) // enable fully automatic state tracking
+    .enableAutomaticStateTracking(nvrhi::ResourceStates::VertexBuffer)
     .setDebugName("Vertex Buffer");
 
 nvrhi::BufferHandle vertexBuffer = nvrhiDevice->createBuffer(vertexBufferDesc);
@@ -219,8 +218,7 @@ auto textureDesc = nvrhi::TextureDesc()
     .setWidth(textureWidth)
     .setHeight(textureHeight)
     .setFormat(nvrhi::Format::SRGBA8_UNORM)
-    .setInitialState(nvrhi::ResourceStates::ShaderResource)
-    .setKeepInitialState(true)
+    .enableAutomaticStateTracking(nvrhi::ResourceStates::ShaderResource)
     .setDebugName("Geometry Texture");
 
 nvrhi::TextureHandle geometryTexture = nvrhiDevice->createTexture(textureDesc);
