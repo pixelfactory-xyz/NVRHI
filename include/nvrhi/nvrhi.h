@@ -1325,9 +1325,7 @@ namespace nvrhi
         }
     };
 
-    // An extended version of FramebufferInfo that also contains the 'width' and 'height' members.
-    // It is provided mostly for backward compatibility and convenience reasons, as previously these members
-    // were available in the regular FramebufferInfo structure.
+    // An extended version of FramebufferInfo that also contains the framebuffer dimensions.
     struct FramebufferInfoEx : FramebufferInfo
     {
         uint32_t width = 0;
