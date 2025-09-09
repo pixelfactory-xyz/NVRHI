@@ -729,8 +729,10 @@ namespace nvrhi::vulkan
         FramebufferDesc desc;
         FramebufferInfoEx framebufferInfo;
         
-        vk::RenderPass renderPass = vk::RenderPass();
-        vk::Framebuffer framebuffer = vk::Framebuffer();
+        static_vector<vk::RenderingAttachmentInfo, c_MaxRenderTargets> colorAttachments;
+        vk::RenderingAttachmentInfo depthAttachment{};
+        vk::RenderingAttachmentInfo stencilAttachment{};
+        vk::RenderingFragmentShadingRateAttachmentInfoKHR shadingRateAttachment{};
 
         std::vector<ResourceHandle> resources;
 
@@ -740,10 +742,8 @@ namespace nvrhi::vulkan
             : m_Context(context)
         { }
 
-        ~Framebuffer() override;
         const FramebufferDesc& getDesc() const override { return desc; }
         const FramebufferInfoEx& getFramebufferInfo() const override { return framebufferInfo; }
-        Object getNativeObject(ObjectType objectType) override;
 
     private:
         const VulkanContext& m_Context;
@@ -1177,8 +1177,6 @@ namespace nvrhi::vulkan
         void queueWaitForSemaphore(CommandQueue waitQueue, VkSemaphore semaphore, uint64_t value) override;
         void queueSignalSemaphore(CommandQueue executionQueue, VkSemaphore semaphore, uint64_t value) override;
         uint64_t queueGetCompletedInstance(CommandQueue queue) override;
-        FramebufferHandle createHandleForNativeFramebuffer(VkRenderPass renderPass, VkFramebuffer framebuffer,
-            const FramebufferDesc& desc, bool transferOwnership) override;
 
     private:
         // Warning m_AftermathCrashDump helper must be first due to reverse destruction order
@@ -1339,6 +1337,7 @@ namespace nvrhi::vulkan
 
         void bindBindingSets(vk::PipelineBindPoint bindPoint, vk::PipelineLayout pipelineLayout, const BindingSetVector& bindings, BindingVector<uint32_t> const& descriptorSetIdxToBindingIdx);
 
+        void beginRenderPass(nvrhi::IFramebuffer* framebuffer);
         void endRenderPass();
 
         void trackResourcesAndBarriers(const GraphicsState& state);

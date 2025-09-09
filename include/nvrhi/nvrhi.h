@@ -1327,6 +1327,7 @@ namespace nvrhi
     {
         uint32_t width = 0;
         uint32_t height = 0;
+        uint32_t arraySize = 1;
 
         FramebufferInfoEx() = default;
         NVRHI_API FramebufferInfoEx(const FramebufferDesc& desc);

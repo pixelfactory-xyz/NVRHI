@@ -43,8 +43,6 @@ namespace nvrhi::vulkan
         virtual void queueWaitForSemaphore(CommandQueue waitQueue, VkSemaphore semaphore, uint64_t value) = 0;
         virtual void queueSignalSemaphore(CommandQueue executionQueue, VkSemaphore semaphore, uint64_t value) = 0;
         virtual uint64_t queueGetCompletedInstance(CommandQueue queue) = 0;
-        virtual FramebufferHandle createHandleForNativeFramebuffer(VkRenderPass renderPass, 
-            VkFramebuffer framebuffer, const FramebufferDesc& desc, bool transferOwnership) = 0;
     };
 
     typedef RefCountPtr<IDevice> DeviceHandle;
