@@ -1311,6 +1311,11 @@ namespace nvrhi
         }
         bool operator!=(const FramebufferInfo& other) const { return !(*this == other); }
 
+        FramebufferInfo& addColorFormat(Format format) { colorFormats.push_back(format); return *this; }
+        FramebufferInfo& setDepthFormat(Format format) { depthFormat = format; return *this; }
+        FramebufferInfo& setSampleCount(uint32_t count) { sampleCount = count; return *this; }
+        FramebufferInfo& setSampleQuality(uint32_t quality) { sampleQuality = quality; return *this; }
+
     private:
         static bool formatsEqual(const static_vector<Format, c_MaxRenderTargets>& a, const static_vector<Format, c_MaxRenderTargets>& b)
         {
@@ -1331,6 +1336,10 @@ namespace nvrhi
 
         FramebufferInfoEx() = default;
         NVRHI_API FramebufferInfoEx(const FramebufferDesc& desc);
+
+        FramebufferInfoEx& setWidth(uint32_t value) { width = value; return *this; }
+        FramebufferInfoEx& setHeight(uint32_t value) { height = value; return *this; }
+        FramebufferInfoEx& setArraySize(uint32_t value) { arraySize = value; return *this; }
 
         [[nodiscard]] Viewport getViewport(float minZ = 0.f, float maxZ = 1.f) const
         {
