@@ -64,7 +64,7 @@ namespace nvrhi
 {
     // Version of the public API provided by NVRHI.
     // Increment this when any changes to the API are made.
-    static constexpr uint32_t c_HeaderVersion = 19;
+    static constexpr uint32_t c_HeaderVersion = 20;
 
     // Verifies that the version of the implementation matches the version of the header.
     // Returns true if they match. Use this when initializing apps using NVRHI as a shared library.
@@ -1311,6 +1311,11 @@ namespace nvrhi
         }
         bool operator!=(const FramebufferInfo& other) const { return !(*this == other); }
 
+        FramebufferInfo& addColorFormat(Format format) { colorFormats.push_back(format); return *this; }
+        FramebufferInfo& setDepthFormat(Format format) { depthFormat = format; return *this; }
+        FramebufferInfo& setSampleCount(uint32_t count) { sampleCount = count; return *this; }
+        FramebufferInfo& setSampleQuality(uint32_t quality) { sampleQuality = quality; return *this; }
+
     private:
         static bool formatsEqual(const static_vector<Format, c_MaxRenderTargets>& a, const static_vector<Format, c_MaxRenderTargets>& b)
         {
@@ -1320,16 +1325,19 @@ namespace nvrhi
         }
     };
 
-    // An extended version of FramebufferInfo that also contains the 'width' and 'height' members.
-    // It is provided mostly for backward compatibility and convenience reasons, as previously these members
-    // were available in the regular FramebufferInfo structure.
+    // An extended version of FramebufferInfo that also contains the framebuffer dimensions.
     struct FramebufferInfoEx : FramebufferInfo
     {
         uint32_t width = 0;
         uint32_t height = 0;
+        uint32_t arraySize = 1;
 
         FramebufferInfoEx() = default;
         NVRHI_API FramebufferInfoEx(const FramebufferDesc& desc);
+
+        FramebufferInfoEx& setWidth(uint32_t value) { width = value; return *this; }
+        FramebufferInfoEx& setHeight(uint32_t value) { height = value; return *this; }
+        FramebufferInfoEx& setArraySize(uint32_t value) { arraySize = value; return *this; }
 
         [[nodiscard]] Viewport getViewport(float minZ = 0.f, float maxZ = 1.f) const
         {
@@ -3578,10 +3586,16 @@ namespace nvrhi
         
         virtual FramebufferHandle createFramebuffer(const FramebufferDesc& desc) = 0;
         
+        virtual GraphicsPipelineHandle createGraphicsPipeline(const GraphicsPipelineDesc& desc, FramebufferInfo const& fbinfo) = 0;
+
+        [[deprecated("Use createGraphicsPipeline with FramebufferInfo instead")]]
         virtual GraphicsPipelineHandle createGraphicsPipeline(const GraphicsPipelineDesc& desc, IFramebuffer* fb) = 0;
         
         virtual ComputePipelineHandle createComputePipeline(const ComputePipelineDesc& desc) = 0;
 
+        virtual MeshletPipelineHandle createMeshletPipeline(const MeshletPipelineDesc& desc, FramebufferInfo const& fbinfo) = 0;
+
+        [[deprecated("Use createMeshletPipeline with FramebufferInfo instead")]]
         virtual MeshletPipelineHandle createMeshletPipeline(const MeshletPipelineDesc& desc, IFramebuffer* fb) = 0;
 
         virtual rt::PipelineHandle createRayTracingPipeline(const rt::PipelineDesc& desc) = 0;

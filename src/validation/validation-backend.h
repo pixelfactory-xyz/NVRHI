@@ -293,7 +293,7 @@ namespace nvrhi::validation
         bool validateBindingSetItem(const BindingSetItem& binding, IDescriptorTable *pOptDescriptorTable, std::stringstream& errorStream);
         bool validatePipelineBindingLayouts(const static_vector<BindingLayoutHandle, c_MaxBindingLayouts>& bindingLayouts, const std::vector<IShader*>& shaders) const;
         bool validateShaderType(ShaderType expected, const ShaderDesc& shaderDesc, const char* function) const;
-        bool validateRenderState(const RenderState& renderState, IFramebuffer* fb) const;
+        bool validateRenderState(const RenderState& renderState, FramebufferInfo const& fbinfo) const;
 
         bool validateClusterOperationParams(const rt::cluster::OperationParams& params) const;
     public:
@@ -355,9 +355,13 @@ namespace nvrhi::validation
 
         FramebufferHandle createFramebuffer(const FramebufferDesc& desc) override;
 
+        GraphicsPipelineHandle createGraphicsPipeline(const GraphicsPipelineDesc& desc, FramebufferInfo const& fbinfo) override;
+
         GraphicsPipelineHandle createGraphicsPipeline(const GraphicsPipelineDesc& desc, IFramebuffer* fb) override;
 
         ComputePipelineHandle createComputePipeline(const ComputePipelineDesc& desc) override;
+
+        MeshletPipelineHandle createMeshletPipeline(const MeshletPipelineDesc& desc, FramebufferInfo const& fbinfo) override;
 
         MeshletPipelineHandle createMeshletPipeline(const MeshletPipelineDesc& desc, IFramebuffer* fb) override;
 

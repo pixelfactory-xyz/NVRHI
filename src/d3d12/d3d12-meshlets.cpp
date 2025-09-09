@@ -155,13 +155,21 @@ namespace nvrhi::d3d12
         return pipelineState;
     }
 
-    MeshletPipelineHandle Device::createMeshletPipeline(const MeshletPipelineDesc& desc, IFramebuffer* fb)
+    MeshletPipelineHandle Device::createMeshletPipeline(const MeshletPipelineDesc& desc, FramebufferInfo const& fbinfo)
     {
         RefCountPtr<RootSignature> pRS = getRootSignature(desc.bindingLayouts, false);
 
-        RefCountPtr<ID3D12PipelineState> pPSO = createPipelineState(desc, pRS, fb->getFramebufferInfo());
+        RefCountPtr<ID3D12PipelineState> pPSO = createPipelineState(desc, pRS, fbinfo);
 
-        return createHandleForNativeMeshletPipeline(pRS, pPSO, desc, fb->getFramebufferInfo());
+        return createHandleForNativeMeshletPipeline(pRS, pPSO, desc, fbinfo);
+    }
+
+    MeshletPipelineHandle Device::createMeshletPipeline(const MeshletPipelineDesc& desc, IFramebuffer* fb)
+    {
+        if (!fb)
+            return nullptr;
+            
+        return createMeshletPipeline(desc, fb->getFramebufferInfo());
     }
 
 	nvrhi::MeshletPipelineHandle Device::createHandleForNativeMeshletPipeline(IRootSignature* rootSignature, ID3D12PipelineState* pipelineState, const MeshletPipelineDesc& desc, const FramebufferInfo& framebufferInfo)

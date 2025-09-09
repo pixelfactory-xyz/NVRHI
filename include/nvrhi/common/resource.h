@@ -76,7 +76,9 @@ namespace nvrhi
         constexpr ObjectType VK_AccelerationStructureKHR            = 0x0003000a;
         constexpr ObjectType VK_Sampler                             = 0x0003000b;
         constexpr ObjectType VK_ShaderModule                        = 0x0003000c;
+        [[deprecated]]
         constexpr ObjectType VK_RenderPass                          = 0x0003000d;
+        [[deprecated]]
         constexpr ObjectType VK_Framebuffer                         = 0x0003000e;
         constexpr ObjectType VK_DescriptorPool                      = 0x0003000f;
         constexpr ObjectType VK_DescriptorSetLayout                 = 0x00030010;

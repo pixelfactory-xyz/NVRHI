@@ -145,9 +145,9 @@ Note that setting the state of one kind invalidated all other kinds of state, e.
 
 ## Framebuffers
 
-Following the Vulkan API for creating graphics pipelines, NVRHI has a concept of a framebuffer. A framebuffer is a collection of render targets, up to 8, and a depth target, each with its subresource set. Framebuffers hold strong references to their textures and are immutable.
+Following the Vulkan 1.0 API for creating graphics pipelines, NVRHI has a concept of a framebuffer. A framebuffer is a collection of render targets, up to 8, and a depth target, each with its subresource set. Framebuffers hold strong references to their textures and are immutable.
 
-A valid framebuffer is necessary to create a graphics or meshlet pipeline. A pipeline created with a certain framebuffer can then be used with the same framebuffer, or with any other framebuffer which is compatible. Two framebuffers are considered compatible when they have the same number and formats of the render targets, and the width and height of the render targets. These parameters are grouped into the `FramebufferInfo` structure, which is accessible through the `IFramebuffer::getFramebufferInfo` method. If two `FramebufferInfo` structures are equal, their framebuffers are compatible.
+A framebuffer was necessary to create a graphics or meshlet pipeline in the original design of NVRHI, but that is no longer the case. Now only a `FramebufferInfo` structure is needed to create a pipeline, and this structure determines render target counts and formats, and the multisampling configuration. Pipelines created with a certain framebuffer info can then be used with any framebuffer which has the same `FramebufferInfo`. The info structure is accessible through the `IFramebuffer::getFramebufferInfo` method.
 
 ## Ray Tracing Support
 
