@@ -64,7 +64,7 @@ namespace nvrhi
 {
     // Version of the public API provided by NVRHI.
     // Increment this when any changes to the API are made.
-    static constexpr uint32_t c_HeaderVersion = 20;
+    static constexpr uint32_t c_HeaderVersion = 21;
 
     // Verifies that the version of the implementation matches the version of the header.
     // Returns true if they match. Use this when initializing apps using NVRHI as a shared library.
@@ -182,8 +182,10 @@ namespace nvrhi
         RGBA8_UNORM,
         RGBA8_SNORM,
         BGRA8_UNORM,
+        BGRX8_UNORM,
         SRGBA8_UNORM,
         SBGRA8_UNORM,
+        SBGRX8_UNORM,
         R10G10B10A2_UNORM,
         R11G11B10_FLOAT,
         RG16_UINT,

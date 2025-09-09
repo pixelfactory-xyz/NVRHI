@@ -59,8 +59,10 @@ namespace nvrhi::vulkan
         { Format::RGBA8_UNORM,       VK_FORMAT_R8G8B8A8_UNORM           },
         { Format::RGBA8_SNORM,       VK_FORMAT_R8G8B8A8_SNORM           },
         { Format::BGRA8_UNORM,       VK_FORMAT_B8G8R8A8_UNORM           },
+        { Format::BGRX8_UNORM,       VK_FORMAT_UNDEFINED                }, // Not supported on Vulkan
         { Format::SRGBA8_UNORM,      VK_FORMAT_R8G8B8A8_SRGB            },
         { Format::SBGRA8_UNORM,      VK_FORMAT_B8G8R8A8_SRGB            },
+        { Format::SBGRX8_UNORM,      VK_FORMAT_UNDEFINED                }, // Not supported on Vulkan
         { Format::R10G10B10A2_UNORM, VK_FORMAT_A2B10G10R10_UNORM_PACK32 },
         { Format::R11G11B10_FLOAT,   VK_FORMAT_B10G11R11_UFLOAT_PACK32  },
         { Format::RG16_UINT,         VK_FORMAT_R16G16_UINT              },
