@@ -180,14 +180,21 @@ namespace nvrhi::d3d12
         return pipelineState;
     }
 
-    
-    GraphicsPipelineHandle Device::createGraphicsPipeline(const GraphicsPipelineDesc& desc, IFramebuffer* fb)
+    GraphicsPipelineHandle Device::createGraphicsPipeline(const GraphicsPipelineDesc& desc, FramebufferInfo const& fbinfo)
     {
         RefCountPtr<RootSignature> pRS = getRootSignature(desc.bindingLayouts, desc.inputLayout != nullptr);
 
-        RefCountPtr<ID3D12PipelineState> pPSO = createPipelineState(desc, pRS, fb->getFramebufferInfo());
+        RefCountPtr<ID3D12PipelineState> pPSO = createPipelineState(desc, pRS, fbinfo);
 
-        return createHandleForNativeGraphicsPipeline(pRS, pPSO, desc, fb->getFramebufferInfo());
+        return createHandleForNativeGraphicsPipeline(pRS, pPSO, desc, fbinfo);
+    }
+    
+    GraphicsPipelineHandle Device::createGraphicsPipeline(const GraphicsPipelineDesc& desc, IFramebuffer* fb)
+    {
+        if (!fb)
+            return nullptr;
+            
+        return createGraphicsPipeline(desc, fb->getFramebufferInfo());
     }
 
     nvrhi::GraphicsPipelineHandle Device::createHandleForNativeGraphicsPipeline(IRootSignature* rootSignature, ID3D12PipelineState* pipelineState, const GraphicsPipelineDesc& desc, const FramebufferInfo& framebufferInfo)

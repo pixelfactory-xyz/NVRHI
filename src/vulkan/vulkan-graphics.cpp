@@ -213,7 +213,7 @@ namespace nvrhi::vulkan
         return shaderStageCreateInfo;
     }
 
-    GraphicsPipelineHandle Device::createGraphicsPipeline(const GraphicsPipelineDesc& desc, IFramebuffer* fb)
+    GraphicsPipelineHandle Device::createGraphicsPipeline(const GraphicsPipelineDesc& desc, FramebufferInfo const& fbinfo)
     {
         if (desc.renderState.singlePassStereo.enabled)
         {
@@ -223,8 +223,6 @@ namespace nvrhi::vulkan
 
         vk::Result res;
 
-        FramebufferInfoEx const& fbinfo = fb->getFramebufferInfo();
-        
         InputLayout* inputLayout = checked_cast<InputLayout*>(desc.inputLayout.Get());
 
         GraphicsPipeline *pso = new GraphicsPipeline(m_Context);
@@ -447,6 +445,14 @@ namespace nvrhi::vulkan
         CHECK_VK_FAIL(res);
         
         return GraphicsPipelineHandle::Create(pso);
+    }
+
+    GraphicsPipelineHandle Device::createGraphicsPipeline(const GraphicsPipelineDesc& desc, IFramebuffer* fb)
+    {
+        if (!fb)
+            return nullptr;
+            
+        return createGraphicsPipeline(desc, fb->getFramebufferInfo());
     }
 
     GraphicsPipeline::~GraphicsPipeline()

@@ -25,15 +25,16 @@
 
 namespace nvrhi::vulkan
 {
-    MeshletPipelineHandle Device::createMeshletPipeline(const MeshletPipelineDesc& desc, IFramebuffer* fb)
+    MeshletPipelineHandle Device::createMeshletPipeline(const MeshletPipelineDesc& desc, FramebufferInfo const& fbinfo)
     {
         if (!m_Context.extensions.NV_mesh_shader)
+        {
             utils::NotSupported();
+            return nullptr;
+        }
 
         vk::Result res;
 
-        FramebufferInfoEx const& fbinfo = fb->getFramebufferInfo();
-        
         MeshletPipeline *pso = new MeshletPipeline(m_Context);
         pso->desc = desc;
         pso->framebufferInfo = fbinfo;
@@ -195,6 +196,14 @@ namespace nvrhi::vulkan
         CHECK_VK_FAIL(res)
         
         return MeshletPipelineHandle::Create(pso);
+    }
+
+    MeshletPipelineHandle Device::createMeshletPipeline(const MeshletPipelineDesc& desc, IFramebuffer* fb)
+    {
+        if (!fb)
+            return nullptr;
+            
+        return createMeshletPipeline(desc, fb->getFramebufferInfo());
     }
 
     MeshletPipeline::~MeshletPipeline()

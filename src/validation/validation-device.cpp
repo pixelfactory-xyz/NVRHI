@@ -1098,7 +1098,7 @@ namespace nvrhi::validation
         return true;
     }
 
-    GraphicsPipelineHandle DeviceWrapper::createGraphicsPipeline(const GraphicsPipelineDesc& pipelineDesc, IFramebuffer* fb)
+    GraphicsPipelineHandle DeviceWrapper::createGraphicsPipeline(const GraphicsPipelineDesc& pipelineDesc, FramebufferInfo const& fbinfo)
     {
         std::vector<IShader*> shaders;
 
@@ -1117,10 +1117,16 @@ namespace nvrhi::validation
         if (!validatePipelineBindingLayouts(pipelineDesc.bindingLayouts, shaders))
             return nullptr;
 
+
+        return m_Device->createGraphicsPipeline(pipelineDesc, fbinfo);
+    }
+
+    GraphicsPipelineHandle DeviceWrapper::createGraphicsPipeline(const GraphicsPipelineDesc& pipelineDesc, IFramebuffer* fb)
+    {
         if (!validateRenderState(pipelineDesc.renderState, fb))
             return nullptr;
 
-        return m_Device->createGraphicsPipeline(pipelineDesc, fb);
+        return createGraphicsPipeline(pipelineDesc, fb->getFramebufferInfo());
     }
 
     ComputePipelineHandle DeviceWrapper::createComputePipeline(const ComputePipelineDesc& pipelineDesc)
@@ -1142,7 +1148,7 @@ namespace nvrhi::validation
         return m_Device->createComputePipeline(pipelineDesc);
     }
 
-    MeshletPipelineHandle DeviceWrapper::createMeshletPipeline(const MeshletPipelineDesc& pipelineDesc, IFramebuffer* fb)
+    MeshletPipelineHandle DeviceWrapper::createMeshletPipeline(const MeshletPipelineDesc& pipelineDesc, FramebufferInfo const& fbinfo)
     {
         std::vector<IShader*> shaders;
 
@@ -1161,10 +1167,18 @@ namespace nvrhi::validation
         if (!validatePipelineBindingLayouts(pipelineDesc.bindingLayouts, shaders))
             return nullptr;
 
+        return m_Device->createMeshletPipeline(pipelineDesc, fbinfo);
+    }
+
+    MeshletPipelineHandle DeviceWrapper::createMeshletPipeline(const MeshletPipelineDesc& pipelineDesc, IFramebuffer* fb)
+    {
+        if (!fb)
+            return nullptr;
+            
         if (!validateRenderState(pipelineDesc.renderState, fb))
             return nullptr;
 
-        return m_Device->createMeshletPipeline(pipelineDesc, fb);
+        return createMeshletPipeline(pipelineDesc, fb->getFramebufferInfo());
     }
 
     nvrhi::rt::PipelineHandle DeviceWrapper::createRayTracingPipeline(const rt::PipelineDesc& desc)
