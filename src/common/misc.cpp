@@ -199,6 +199,12 @@ namespace nvrhi
             setTextureState(desc.depthAttachment.texture, desc.depthAttachment.subresources,
                 desc.depthAttachment.isReadOnly ? ResourceStates::DepthRead : ResourceStates::DepthWrite);
         }
+        
+        if (desc.shadingRateAttachment.valid())
+        {
+            setTextureState(desc.shadingRateAttachment.texture, desc.shadingRateAttachment.subresources,
+                nvrhi::ResourceStates::ShadingRateSurface);
+        }
     }
     
     size_t coopvec::getDataTypeSize(coopvec::DataType type)

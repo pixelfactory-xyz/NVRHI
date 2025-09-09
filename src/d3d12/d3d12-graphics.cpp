@@ -430,7 +430,6 @@ namespace nvrhi::d3d12
 
             if (shouldEnableVariableRateShading)
             {
-                setTextureState(framebufferDesc.shadingRateAttachment.texture, nvrhi::TextureSubresourceSet(0, 1, 0, 1), nvrhi::ResourceStates::ShadingRateSurface);
                 Texture* texture = checked_cast<Texture*>(framebufferDesc.shadingRateAttachment.texture);
                 m_ActiveCommandList->commandList6->RSSetShadingRateImage(texture->resource);
             }

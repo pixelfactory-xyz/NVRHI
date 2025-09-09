@@ -553,12 +553,6 @@ namespace nvrhi::vulkan
             endRenderPass();
         }
 
-        auto desc = state.framebuffer->getDesc();
-        if (desc.shadingRateAttachment.valid())
-        {
-            setTextureState(desc.shadingRateAttachment.texture, nvrhi::TextureSubresourceSet(0, 1, 0, 1), nvrhi::ResourceStates::ShadingRateSurface);
-        }
-
         commitBarriers();
 
         if(!m_CurrentGraphicsState.framebuffer)
