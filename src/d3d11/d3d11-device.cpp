@@ -334,7 +334,7 @@ namespace nvrhi::d3d11
         return false;
     }
 
-    MeshletPipelineHandle Device::createMeshletPipeline(const MeshletPipelineDesc& desc, FramebufferInfo const& fbinfo)
+    MeshletPipelineHandle Device::createMeshletPipeline(const MeshletPipelineDesc&, FramebufferInfo const&)
     {
         utils::NotSupported();
         return nullptr;
