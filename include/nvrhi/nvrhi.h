@@ -1982,10 +1982,11 @@ namespace nvrhi
     {
         ShaderType visibility = ShaderType::None;
 
-        // In DX12, this controls the register space of the bindings
-        // In Vulkan, DXC maps register spaces to descriptor sets by default, so this can be used to
+        // On DX11, the registerSpace is ignored, and all bindings are placed in the same space.
+        // On DX12, it controls the register space of the bindings.
+        // On Vulkan, DXC maps register spaces to descriptor sets by default, so this can be used to
         // determine the descriptor set index for the binding layout.
-        // In order to use this behaviour, you must set `registerSpaceIsDescriptorSet` to true.  See below.
+        // In order to use this behavior, you must set `registerSpaceIsDescriptorSet` to true. See below.
         uint32_t registerSpace = 0;
 
         // This flag controls the behavior for pipelines that use multiple binding layouts.
@@ -2006,6 +2007,8 @@ namespace nvrhi
         BindingLayoutDesc& setVisibility(ShaderType value) { visibility = value; return *this; }
         BindingLayoutDesc& setRegisterSpace(uint32_t value) { registerSpace = value; return *this; }
         BindingLayoutDesc& setRegisterSpaceIsDescriptorSet(bool value) { registerSpaceIsDescriptorSet = value; return *this; }
+        // Shortcut for .setRegisterSpace(value).setRegisterSpaceIsDescriptorSet(true)
+        BindingLayoutDesc& setRegisterSpaceAndDescriptorSet(uint32_t value) { registerSpace = value; registerSpaceIsDescriptorSet = true; return *this; }
         BindingLayoutDesc& addItem(const BindingLayoutItem& value) { bindings.push_back(value); return *this; }
         BindingLayoutDesc& setBindingOffsets(const VulkanBindingOffsets& value) { bindingOffsets = value; return *this; }
     };

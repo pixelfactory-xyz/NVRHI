@@ -875,12 +875,12 @@ namespace nvrhi::validation
     }
 
     static void FillBindingLayoutSummary(IMessageCallback* messageCallback, BindingLayoutDesc const& desc,
-        BindingSummary& bindings, BindingLocationSet& duplicates)
+        bool ignoreRegisterSpaces, BindingSummary& bindings, BindingLocationSet& duplicates)
     {
         for (const auto& item : desc.bindings)
         {
             BindingLocation location;
-            location.registerSpace = desc.registerSpace;
+            location.registerSpace = ignoreRegisterSpaces ? 0 : desc.registerSpace;
             location.slot = item.slot;
             uint32_t arraySize = item.getArraySize();
             for (location.arrayElement = 0; location.arrayElement < arraySize; ++location.arrayElement)
@@ -891,12 +891,12 @@ namespace nvrhi::validation
     }
     
     static void FillBindingSetSummary(IMessageCallback* messageCallback, BindingSetDesc const& desc,
-        uint32_t registerSpace, BindingSummary& bindings, BindingLocationSet& duplicates)
+        bool ignoreRegisterSpaces, uint32_t registerSpace, BindingSummary& bindings, BindingLocationSet& duplicates)
     {
         for (const auto& item : desc.bindings)
         {
             BindingLocation location;
-            location.registerSpace = registerSpace;
+            location.registerSpace = ignoreRegisterSpaces ? 0 : registerSpace;
             location.slot = item.slot;
             location.arrayElement = item.arrayElement;
             UpdateBindingSummaryWithLocation(messageCallback, item.type, location, bindings, duplicates);
@@ -973,6 +973,8 @@ namespace nvrhi::validation
         std::stringstream ssDuplicateBindings;
         std::stringstream ssOverlappingBindings;
 
+        bool const ignoreRegisterSpaces = (m_Device->getGraphicsAPI() == GraphicsAPI::D3D11);
+
         for (IShader* shader : shaders)
         {
             ShaderType stage = shader->getDesc().shaderType;
@@ -1001,7 +1003,8 @@ namespace nvrhi::validation
                                 continue;
 
                         BindingLocationSet duplicates;
-                        FillBindingLayoutSummary(m_MessageCallback, *layoutDesc, bindingsPerLayout[layoutIndex], duplicates);
+                        FillBindingLayoutSummary(m_MessageCallback, *layoutDesc, ignoreRegisterSpaces,
+                            bindingsPerLayout[layoutIndex], duplicates);
 
                         // Layouts with duplicates should not have passed validation in createBindingLayout
                         assert(duplicates.empty());
@@ -1327,11 +1330,12 @@ namespace nvrhi::validation
     {
         std::stringstream errorStream;
         bool anyErrors = false;
+        bool const ignoreRegisterSpaces = (m_Device->getGraphicsAPI() == GraphicsAPI::D3D11);
 
         BindingSummary bindings;
         BindingLocationSet duplicates;
 
-        FillBindingLayoutSummary(m_MessageCallback, desc, bindings, duplicates);
+        FillBindingLayoutSummary(m_MessageCallback, desc, ignoreRegisterSpaces, bindings, duplicates);
 
         if (desc.visibility == ShaderType::None)
         {
@@ -1413,14 +1417,12 @@ namespace nvrhi::validation
         }
 
         const GraphicsAPI graphicsApi = m_Device->getGraphicsAPI();
-        if (!(graphicsApi == GraphicsAPI::D3D12 || (graphicsApi == GraphicsAPI::VULKAN && desc.registerSpaceIsDescriptorSet)))
+        
+        if (desc.registerSpace != 0 && graphicsApi == GraphicsAPI::VULKAN && !desc.registerSpaceIsDescriptorSet)
         {
-            if (desc.registerSpace != 0)
-            {
-                errorStream << "Binding layout registerSpace = " << desc.registerSpace << ", which is unsupported by the "
-                    << utils::GraphicsAPIToString(graphicsApi) << " backend" << std::endl;
-                anyErrors = true;
-            }
+            errorStream << "Binding layout has nonzero registerSpace (" << desc.registerSpace << "), which is supported "
+                " on Vulkan only if the registerSpaceIsDescriptorSet flag is set" << std::endl;
+            anyErrors = true;
         }
 
         if (anyErrors)
@@ -1830,16 +1832,19 @@ namespace nvrhi::validation
 
         std::stringstream errorStream;
         bool anyErrors = false;
+        bool const ignoreRegisterSpaces = (m_Device->getGraphicsAPI() == GraphicsAPI::D3D11);
 
         BindingSummary layoutBindings;
         BindingLocationSet layoutDuplicates;
 
-        FillBindingLayoutSummary(m_MessageCallback, *layoutDesc, layoutBindings, layoutDuplicates);
+        FillBindingLayoutSummary(m_MessageCallback, *layoutDesc, ignoreRegisterSpaces,
+            layoutBindings, layoutDuplicates);
 
         BindingSummary setBindings;
         BindingLocationSet setDuplicates;
 
-        FillBindingSetSummary(m_MessageCallback, desc, layoutDesc->registerSpace, setBindings, setDuplicates);
+        FillBindingSetSummary(m_MessageCallback, desc, ignoreRegisterSpaces, layoutDesc->registerSpace,
+            setBindings, setDuplicates);
 
         BindingLocationSet declaredNotBound;
         BindingLocationSet boundNotDeclared;
