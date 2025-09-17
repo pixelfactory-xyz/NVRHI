@@ -55,7 +55,7 @@ namespace nvrhi::vulkan
 
     FramebufferHandle Device::createFramebuffer(const FramebufferDesc& desc)
     {
-        Framebuffer *fb = new Framebuffer(m_Context);
+        Framebuffer *fb = new Framebuffer();
         fb->desc = desc;
         fb->framebufferInfo = FramebufferInfoEx(desc);
 

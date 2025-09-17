@@ -191,6 +191,10 @@ namespace nvrhi::vulkan
 
             break;
         }
+        case rt::GeometryType::Spheres:
+        case rt::GeometryType::Lss:
+            utils::NotImplemented();
+            break;
         }
 
         if (pRange)
@@ -641,6 +645,10 @@ namespace nvrhi::vulkan
                 }
                 break;
             }
+            case rt::GeometryType::Spheres:
+            case rt::GeometryType::Lss:
+                utils::NotImplemented();
+                break;
             }
         }
 

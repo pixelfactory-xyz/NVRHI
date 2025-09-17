@@ -459,8 +459,7 @@ namespace nvrhi::d3d12
     void Device::getTextureTiling(ITexture* texture, uint32_t* numTiles, PackedMipDesc* desc, TileShape* tileShape, uint32_t* subresourceTilingsNum, SubresourceTiling* _subresourceTilings)
     {
         ID3D12Resource* resource = checked_cast<Texture*>(texture)->resource;
-        D3D12_RESOURCE_DESC resourceDesc = resource->GetDesc();
-
+        
         D3D12_PACKED_MIP_INFO packedMipDesc = {};
         D3D12_TILE_SHAPE standardTileShapeForNonPackedMips = {};
         D3D12_SUBRESOURCE_TILING subresourceTilings[16];

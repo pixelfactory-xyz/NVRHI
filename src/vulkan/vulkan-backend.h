@@ -738,15 +738,8 @@ namespace nvrhi::vulkan
 
         bool managed = true;
 
-        explicit Framebuffer(const VulkanContext& context)
-            : m_Context(context)
-        { }
-
         const FramebufferDesc& getDesc() const override { return desc; }
         const FramebufferInfoEx& getFramebufferInfo() const override { return framebufferInfo; }
-
-    private:
-        const VulkanContext& m_Context;
     };
 
     class BindingLayout : public RefCounter<IBindingLayout>

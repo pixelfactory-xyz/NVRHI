@@ -905,7 +905,7 @@ namespace nvrhi::d3d12
         textureDesc.initialState = desc.initialState;
         textureDesc.keepInitialState = desc.keepInitialState;
 
-        SamplerFeedbackTexture* texture = new SamplerFeedbackTexture(m_Context, m_Resources, desc, textureDesc, pairedTexture);
+        SamplerFeedbackTexture* texture = new SamplerFeedbackTexture(m_Context, desc, textureDesc, pairedTexture);
 
         HRESULT hr = m_Context.device8->CreateCommittedResource2(
             &heapPropsDefault,
@@ -956,7 +956,7 @@ namespace nvrhi::d3d12
         textureDesc.initialState = ResourceStates::Unknown;
         textureDesc.keepInitialState = false;
 
-        SamplerFeedbackTexture* texture = new SamplerFeedbackTexture(m_Context, m_Resources, desc, textureDesc, pairedTexture);
+        SamplerFeedbackTexture* texture = new SamplerFeedbackTexture(m_Context, desc, textureDesc, pairedTexture);
         texture->resource = pResource;
 
         return SamplerFeedbackTextureHandle::Create(texture);
