@@ -51,7 +51,7 @@ namespace nvrhi::vulkan
         { Format::R16_UNORM,         VK_FORMAT_R16_UNORM                },
         { Format::R16_SNORM,         VK_FORMAT_R16_SNORM                },
         { Format::R16_FLOAT,         VK_FORMAT_R16_SFLOAT               },
-        { Format::BGRA4_UNORM,       VK_FORMAT_B4G4R4A4_UNORM_PACK16    },
+        { Format::BGRA4_UNORM,       VK_FORMAT_A4R4G4B4_UNORM_PACK16    }, // this format matches the bit layout of DXGI_FORMAT_B4G4R4A4_UNORM
         { Format::B5G6R5_UNORM,      VK_FORMAT_B5G6R5_UNORM_PACK16      },
         { Format::B5G5R5A1_UNORM,    VK_FORMAT_B5G5R5A1_UNORM_PACK16    },
         { Format::RGBA8_UINT,        VK_FORMAT_R8G8B8A8_UINT            },
