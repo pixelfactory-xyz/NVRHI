@@ -38,12 +38,17 @@
 #include <GFSDK_Aftermath.h>
 #endif
 
-// There's no version check available in the nvapi header,
-// instead to check if the NvAPI linked is OMM compatible version (>520) we look for one of the defines it adds...
-#if NVRHI_D3D12_WITH_NVAPI && defined(NVAPI_GET_RAYTRACING_OPACITY_MICROMAP_ARRAY_PREBUILD_INFO_PARAMS_VER)
-#define NVRHI_WITH_NVAPI_OPACITY_MICROMAP (1)
+// If using the Agility SDK version of OMM, ignore the NVAPI version
+#if NVRHI_D3D12_WITH_DXR12_OPACITY_MICROMAP
+    #define NVRHI_WITH_NVAPI_OPACITY_MICROMAP (0)
 #else
-#define NVRHI_WITH_NVAPI_OPACITY_MICROMAP (0)
+    // There's no version check available in the nvapi header,
+    // instead to check if the NvAPI linked is OMM compatible version (>520) we look for one of the defines it adds...
+    #if NVRHI_D3D12_WITH_NVAPI && defined(NVAPI_GET_RAYTRACING_OPACITY_MICROMAP_ARRAY_PREBUILD_INFO_PARAMS_VER)
+        #define NVRHI_WITH_NVAPI_OPACITY_MICROMAP (1)
+    #else
+        #define NVRHI_WITH_NVAPI_OPACITY_MICROMAP (0)
+    #endif
 #endif
 
 // ... same for DMM compatible versions (>=535) we look for one of the defines it adds
