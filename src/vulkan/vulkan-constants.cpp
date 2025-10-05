@@ -898,9 +898,9 @@ namespace nvrhi::vulkan
         case coopvec::DataType::SInt64:
             return vk::ComponentTypeKHR::eSint64;
         case coopvec::DataType::FloatE4M3:
-            return vk::ComponentTypeKHR::eFloatE4M3NV;
+            return vk::ComponentTypeKHR::eFloatE4M3;
         case coopvec::DataType::FloatE5M2:
-            return vk::ComponentTypeKHR::eFloatE5M2NV;
+            return vk::ComponentTypeKHR::eFloatE5M2;
         case coopvec::DataType::Float16:
             return vk::ComponentTypeKHR::eFloat16;
         case coopvec::DataType::BFloat16:
@@ -939,9 +939,9 @@ namespace nvrhi::vulkan
             return coopvec::DataType::UInt64;
         case vk::ComponentTypeKHR::eSint64:
             return coopvec::DataType::SInt64;
-        case vk::ComponentTypeKHR::eFloatE4M3NV:
+        case vk::ComponentTypeKHR::eFloatE4M3:
             return coopvec::DataType::FloatE4M3;
-        case vk::ComponentTypeKHR::eFloatE5M2NV:
+        case vk::ComponentTypeKHR::eFloatE5M2:
             return coopvec::DataType::FloatE5M2;
         case vk::ComponentTypeKHR::eFloat16:
             return coopvec::DataType::Float16;
