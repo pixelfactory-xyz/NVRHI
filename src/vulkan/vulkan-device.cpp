@@ -417,7 +417,10 @@ namespace nvrhi::vulkan
     FormatSupport Device::queryFormatSupport(Format format)
     {
         VkFormat vulkanFormat = convertFormat(format);
-        
+
+        if (vulkanFormat == VK_FORMAT_UNDEFINED)
+            return FormatSupport::None;
+
         vk::FormatProperties props;
         m_Context.physicalDevice.getFormatProperties(vk::Format(vulkanFormat), &props);
 

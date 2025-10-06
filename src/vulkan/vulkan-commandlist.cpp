@@ -188,8 +188,6 @@ namespace nvrhi::vulkan
             vkDesc.dstStride = desc.dst.stride != 0
                 ? desc.dst.stride
                 : nvrhi::coopvec::getOptimalMatrixStride(desc.dst.type, desc.dst.layout, desc.numRows, desc.numColumns);
-
-            vkConvertDescs.push_back(vkDesc);
         }
 
         commitBarriers();

@@ -398,13 +398,12 @@ namespace nvrhi::d3d12
         TextureHandle pairedTexture;
         DescriptorIndex clearDescriptorIndex = c_InvalidDescriptorIndex;
 
-        SamplerFeedbackTexture(const Context& context, DeviceResources& resources, SamplerFeedbackTextureDesc desc, TextureDesc textureDesc, ITexture* pairedTexture)
-            : desc(std::move(desc))
+        SamplerFeedbackTexture(const Context& context, SamplerFeedbackTextureDesc desc, TextureDesc textureDesc, ITexture* pairedTexture)
+            : TextureStateExtension(SamplerFeedbackTexture::textureDesc)
+            , desc(std::move(desc))
             , textureDesc(std::move(textureDesc))
-            , m_Context(context)
-            , m_Resources(resources)
             , pairedTexture(pairedTexture)
-            , TextureStateExtension(SamplerFeedbackTexture::textureDesc)
+            , m_Context(context)
         {
             TextureStateExtension::stateInitialized = true;
             TextureStateExtension::isSamplerFeedback = true;
@@ -419,7 +418,6 @@ namespace nvrhi::d3d12
 
     private:
         const Context& m_Context;
-        DeviceResources& m_Resources;
     };
 
     class Sampler : public RefCounter<ISampler>
@@ -1172,9 +1170,13 @@ namespace nvrhi::d3d12
 
         FramebufferHandle createFramebuffer(const FramebufferDesc& desc) override;
         
+        GraphicsPipelineHandle createGraphicsPipeline(const GraphicsPipelineDesc& desc, FramebufferInfo const& fbinfo) override;
+        
         GraphicsPipelineHandle createGraphicsPipeline(const GraphicsPipelineDesc& desc, IFramebuffer* fb) override;
         
         ComputePipelineHandle createComputePipeline(const ComputePipelineDesc& desc) override;
+
+        MeshletPipelineHandle createMeshletPipeline(const MeshletPipelineDesc& desc, FramebufferInfo const& fbinfo) override;
 
         MeshletPipelineHandle createMeshletPipeline(const MeshletPipelineDesc& desc, IFramebuffer* fb) override;
 

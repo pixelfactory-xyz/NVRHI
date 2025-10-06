@@ -169,14 +169,18 @@ namespace nvrhi
         if (desc.depthAttachment.valid())
         {
             const TextureDesc& textureDesc = desc.depthAttachment.texture->getDesc();
-            width = std::max(textureDesc.width >> desc.depthAttachment.subresources.baseMipLevel, 1u);
-            height = std::max(textureDesc.height >> desc.depthAttachment.subresources.baseMipLevel, 1u);
+            TextureSubresourceSet const subresources = desc.depthAttachment.subresources.resolve(textureDesc, true);
+            width = std::max(textureDesc.width >> subresources.baseMipLevel, 1u);
+            height = std::max(textureDesc.height >> subresources.baseMipLevel, 1u);
+            arraySize = subresources.numArraySlices;
         }
         else if (!desc.colorAttachments.empty() && desc.colorAttachments[0].valid())
         {
             const TextureDesc& textureDesc = desc.colorAttachments[0].texture->getDesc();
-            width = std::max(textureDesc.width >> desc.colorAttachments[0].subresources.baseMipLevel, 1u);
-            height = std::max(textureDesc.height >> desc.colorAttachments[0].subresources.baseMipLevel, 1u);
+            TextureSubresourceSet const subresources = desc.colorAttachments[0].subresources.resolve(textureDesc, true);
+            width = std::max(textureDesc.width >> subresources.baseMipLevel, 1u);
+            height = std::max(textureDesc.height >> subresources.baseMipLevel, 1u);
+            arraySize = subresources.numArraySlices;
         }
     }
 
@@ -194,6 +198,12 @@ namespace nvrhi
         {
             setTextureState(desc.depthAttachment.texture, desc.depthAttachment.subresources,
                 desc.depthAttachment.isReadOnly ? ResourceStates::DepthRead : ResourceStates::DepthWrite);
+        }
+        
+        if (desc.shadingRateAttachment.valid())
+        {
+            setTextureState(desc.shadingRateAttachment.texture, desc.shadingRateAttachment.subresources,
+                nvrhi::ResourceStates::ShadingRateSurface);
         }
     }
     

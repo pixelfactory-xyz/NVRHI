@@ -64,7 +64,7 @@ namespace nvrhi
 {
     // Version of the public API provided by NVRHI.
     // Increment this when any changes to the API are made.
-    static constexpr uint32_t c_HeaderVersion = 19;
+    static constexpr uint32_t c_HeaderVersion = 21;
 
     // Verifies that the version of the implementation matches the version of the header.
     // Returns true if they match. Use this when initializing apps using NVRHI as a shared library.
@@ -182,8 +182,10 @@ namespace nvrhi
         RGBA8_UNORM,
         RGBA8_SNORM,
         BGRA8_UNORM,
+        BGRX8_UNORM,
         SRGBA8_UNORM,
         SBGRA8_UNORM,
+        SBGRX8_UNORM,
         R10G10B10A2_UNORM,
         R11G11B10_FLOAT,
         RG16_UINT,
@@ -456,6 +458,14 @@ namespace nvrhi
         constexpr TextureDesc& setInitialState(ResourceStates value) { initialState = value; return *this; }
         constexpr TextureDesc& setKeepInitialState(bool value) { keepInitialState = value; return *this; }
         constexpr TextureDesc& setSharedResourceFlags(SharedResourceFlags value) { sharedResourceFlags = value; return *this; }
+        
+        // Equivalent to .setInitialState(_initialState).setKeepInitialState(true)
+        constexpr TextureDesc& enableAutomaticStateTracking(ResourceStates _initialState)
+        {
+            initialState = _initialState;
+            keepInitialState = true;
+            return *this;
+        }
     };
 
     // Describes a 2D or 3D section of a single mip level, single array slice of a texture.
@@ -711,6 +721,14 @@ namespace nvrhi
         constexpr BufferDesc& setInitialState(ResourceStates value) { initialState = value; return *this; }
         constexpr BufferDesc& setKeepInitialState(bool value) { keepInitialState = value; return *this; }
         constexpr BufferDesc& setCpuAccess(CpuAccessMode value) { cpuAccess = value; return *this; }
+
+        // Equivalent to .setInitialState(_initialState).setKeepInitialState(true)
+        constexpr BufferDesc& enableAutomaticStateTracking(ResourceStates _initialState)
+        {
+            initialState = _initialState;
+            keepInitialState = true;
+            return *this;
+        }
     };
 
     struct BufferRange
@@ -1311,6 +1329,11 @@ namespace nvrhi
         }
         bool operator!=(const FramebufferInfo& other) const { return !(*this == other); }
 
+        FramebufferInfo& addColorFormat(Format format) { colorFormats.push_back(format); return *this; }
+        FramebufferInfo& setDepthFormat(Format format) { depthFormat = format; return *this; }
+        FramebufferInfo& setSampleCount(uint32_t count) { sampleCount = count; return *this; }
+        FramebufferInfo& setSampleQuality(uint32_t quality) { sampleQuality = quality; return *this; }
+
     private:
         static bool formatsEqual(const static_vector<Format, c_MaxRenderTargets>& a, const static_vector<Format, c_MaxRenderTargets>& b)
         {
@@ -1320,16 +1343,19 @@ namespace nvrhi
         }
     };
 
-    // An extended version of FramebufferInfo that also contains the 'width' and 'height' members.
-    // It is provided mostly for backward compatibility and convenience reasons, as previously these members
-    // were available in the regular FramebufferInfo structure.
+    // An extended version of FramebufferInfo that also contains the framebuffer dimensions.
     struct FramebufferInfoEx : FramebufferInfo
     {
         uint32_t width = 0;
         uint32_t height = 0;
+        uint32_t arraySize = 1;
 
         FramebufferInfoEx() = default;
         NVRHI_API FramebufferInfoEx(const FramebufferDesc& desc);
+
+        FramebufferInfoEx& setWidth(uint32_t value) { width = value; return *this; }
+        FramebufferInfoEx& setHeight(uint32_t value) { height = value; return *this; }
+        FramebufferInfoEx& setArraySize(uint32_t value) { arraySize = value; return *this; }
 
         [[nodiscard]] Viewport getViewport(float minZ = 0.f, float maxZ = 1.f) const
         {
@@ -1956,10 +1982,11 @@ namespace nvrhi
     {
         ShaderType visibility = ShaderType::None;
 
-        // In DX12, this controls the register space of the bindings
-        // In Vulkan, DXC maps register spaces to descriptor sets by default, so this can be used to
+        // On DX11, the registerSpace is ignored, and all bindings are placed in the same space.
+        // On DX12, it controls the register space of the bindings.
+        // On Vulkan, DXC maps register spaces to descriptor sets by default, so this can be used to
         // determine the descriptor set index for the binding layout.
-        // In order to use this behaviour, you must set `registerSpaceIsDescriptorSet` to true.  See below.
+        // In order to use this behavior, you must set `registerSpaceIsDescriptorSet` to true. See below.
         uint32_t registerSpace = 0;
 
         // This flag controls the behavior for pipelines that use multiple binding layouts.
@@ -1980,6 +2007,8 @@ namespace nvrhi
         BindingLayoutDesc& setVisibility(ShaderType value) { visibility = value; return *this; }
         BindingLayoutDesc& setRegisterSpace(uint32_t value) { registerSpace = value; return *this; }
         BindingLayoutDesc& setRegisterSpaceIsDescriptorSet(bool value) { registerSpaceIsDescriptorSet = value; return *this; }
+        // Shortcut for .setRegisterSpace(value).setRegisterSpaceIsDescriptorSet(true)
+        BindingLayoutDesc& setRegisterSpaceAndDescriptorSet(uint32_t value) { registerSpace = value; registerSpaceIsDescriptorSet = true; return *this; }
         BindingLayoutDesc& addItem(const BindingLayoutItem& value) { bindings.push_back(value); return *this; }
         BindingLayoutDesc& setBindingOffsets(const VulkanBindingOffsets& value) { bindingOffsets = value; return *this; }
     };
@@ -3578,10 +3607,16 @@ namespace nvrhi
         
         virtual FramebufferHandle createFramebuffer(const FramebufferDesc& desc) = 0;
         
+        virtual GraphicsPipelineHandle createGraphicsPipeline(const GraphicsPipelineDesc& desc, FramebufferInfo const& fbinfo) = 0;
+
+        [[deprecated("Use createGraphicsPipeline with FramebufferInfo instead")]]
         virtual GraphicsPipelineHandle createGraphicsPipeline(const GraphicsPipelineDesc& desc, IFramebuffer* fb) = 0;
         
         virtual ComputePipelineHandle createComputePipeline(const ComputePipelineDesc& desc) = 0;
 
+        virtual MeshletPipelineHandle createMeshletPipeline(const MeshletPipelineDesc& desc, FramebufferInfo const& fbinfo) = 0;
+
+        [[deprecated("Use createMeshletPipeline with FramebufferInfo instead")]]
         virtual MeshletPipelineHandle createMeshletPipeline(const MeshletPipelineDesc& desc, IFramebuffer* fb) = 0;
 
         virtual rt::PipelineHandle createRayTracingPipeline(const rt::PipelineDesc& desc) = 0;
@@ -3748,6 +3783,19 @@ namespace std
             nvrhi::hash_combine(hash, s.alphaToCoverageEnable);
             for (const auto& target : s.targets)
                 nvrhi::hash_combine(hash, target);
+            return hash;
+        }
+    };
+    
+    template<> struct hash<nvrhi::VariableRateShadingState>
+    {
+        std::size_t operator()(nvrhi::VariableRateShadingState const& s) const noexcept
+        {
+            size_t hash = 0;
+            nvrhi::hash_combine(hash, s.enabled);
+            nvrhi::hash_combine(hash, s.shadingRate);
+            nvrhi::hash_combine(hash, s.pipelinePrimitiveCombiner);
+            nvrhi::hash_combine(hash, s.imageCombiner);
             return hash;
         }
     };
