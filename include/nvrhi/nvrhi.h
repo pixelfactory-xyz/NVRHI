@@ -1389,7 +1389,7 @@ namespace nvrhi
             None = 0,
             FastTrace = 1,
             FastBuild = 2,
-            AllowCompaction = 3
+            AllowCompaction = 4
         };
 
         NVRHI_ENUM_CLASS_FLAG_OPERATORS(OpacityMicromapBuildFlags)
