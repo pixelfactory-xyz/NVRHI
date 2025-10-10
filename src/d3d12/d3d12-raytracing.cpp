@@ -1346,7 +1346,11 @@ namespace nvrhi::d3d12
 #if NVRHI_D3D12_WITH_DXR12_OPACITY_MICROMAP
         d3dSubobject.Type = D3D12_STATE_SUBOBJECT_TYPE_RAYTRACING_PIPELINE_CONFIG1;
         D3D12_RAYTRACING_PIPELINE_CONFIG1 d3dPipelineConfig = {};
-        d3dPipelineConfig.Flags = D3D12_RAYTRACING_PIPELINE_FLAG_ALLOW_OPACITY_MICROMAPS;
+
+        if (m_OpacityMicromapSupported && desc.allowOpacityMicromaps)
+        {
+            d3dPipelineConfig.Flags = D3D12_RAYTRACING_PIPELINE_FLAG_ALLOW_OPACITY_MICROMAPS;
+        }
 #else
         d3dSubobject.Type = D3D12_STATE_SUBOBJECT_TYPE_RAYTRACING_PIPELINE_CONFIG;
         D3D12_RAYTRACING_PIPELINE_CONFIG d3dPipelineConfig = {};
