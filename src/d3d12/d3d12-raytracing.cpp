@@ -1910,7 +1910,7 @@ namespace nvrhi::d3d12
                 hasOMM = true;
             }
         }
-#ifdef NVRHI_D3D12_WITH_DXR12_OPACITY_MICROMAP
+#if NVRHI_D3D12_WITH_DXR12_OPACITY_MICROMAP
         if (hasOMM)
         {
             inputs.SetOMMDescCount((uint32_t)numGeometries);

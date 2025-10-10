@@ -282,9 +282,7 @@ if (NVRHI_WITH_DX12)
         target_link_libraries(${nvrhi_d3d12_target} PUBLIC rtxmu)
     endif()
 
-    if(NVRHI_D3D12_WITH_DXR12_OPACITY_MICROMAP)
-        target_compile_definitions(${nvrhi_d3d12_target} PUBLIC NVRHI_D3D12_WITH_DXR12_OPACITY_MICROMAP=1)
-    endif()
+    target_compile_definitions(${nvrhi_d3d12_target} PRIVATE NVRHI_D3D12_WITH_DXR12_OPACITY_MICROMAP=$<BOOL:${NVRHI_D3D12_WITH_DXR12_OPACITY_MICROMAP}>)
 
     target_link_libraries(${nvrhi_d3d12_target} PUBLIC Microsoft::DirectX-Headers Microsoft::DirectX-Guids d3d12)
 
