@@ -1389,6 +1389,7 @@ namespace nvrhi
             None = 0,
             FastTrace = 1,
             FastBuild = 2,
+            AllowCompaction = 4
         };
 
         NVRHI_ENUM_CLASS_FLAG_OPERATORS(OpacityMicromapBuildFlags)
@@ -2809,6 +2810,7 @@ namespace nvrhi
             uint32_t maxAttributeSize = sizeof(float) * 2; // typical case: float2 uv;
             uint32_t maxRecursionDepth = 1;
             int32_t hlslExtensionsUAV = -1;
+            bool allowOpacityMicromaps = false;
 
             PipelineDesc& addShader(const PipelineShaderDesc& value) { shaders.push_back(value); return *this; }
             PipelineDesc& addHitGroup(const PipelineHitGroupDesc& value) { hitGroups.push_back(value); return *this; }
@@ -2817,6 +2819,7 @@ namespace nvrhi
             PipelineDesc& setMaxAttributeSize(uint32_t value) { maxAttributeSize = value; return *this; }
             PipelineDesc& setMaxRecursionDepth(uint32_t value) { maxRecursionDepth = value; return *this; }
             PipelineDesc& setHlslExtensionsUAV(int32_t value) { hlslExtensionsUAV = value; return *this; }
+            PipelineDesc& setAllowOpacityMicromaps(bool value) { allowOpacityMicromaps = value; return *this; }
         };
 
         class IPipeline;
