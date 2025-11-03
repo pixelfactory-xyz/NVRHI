@@ -71,7 +71,8 @@
 #define NVRHI_WITH_NVAPI_LSS (0)
 #endif
 
-#if D3D12_PREVIEW_SDK_VERSION >= 717
+// We need the header SDK. Checking for preview SDK doesn't ensure the types.
+#if D3D12_SDK_VERSION >= 717
 #define NVRHI_D3D12_WITH_COOPVEC (1)
 #else
 #define NVRHI_D3D12_WITH_COOPVEC (0)
