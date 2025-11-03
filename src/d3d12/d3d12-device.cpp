@@ -118,6 +118,9 @@ namespace nvrhi::d3d12
         {
             m_RayTracingSupported = m_Options5.RaytracingTier >= D3D12_RAYTRACING_TIER_1_0;
             m_TraceRayInlineSupported = m_Options5.RaytracingTier >= D3D12_RAYTRACING_TIER_1_1;
+#if NVRHI_D3D12_WITH_DXR12_OPACITY_MICROMAP
+            m_OpacityMicromapSupported = m_Options5.RaytracingTier >= D3D12_RAYTRACING_TIER_1_2;
+#endif // NVRHI_D3D12_WITH_DXR12_OPACITY_MICROMAP
 
 #ifdef NVRHI_WITH_RTXMU
             if (m_RayTracingSupported)
@@ -216,7 +219,11 @@ namespace nvrhi::d3d12
                 m_ShaderExecutionReorderingSupported = (ser & NVAPI_D3D12_RAYTRACING_THREAD_REORDERING_CAP_STANDARD) == NVAPI_D3D12_RAYTRACING_THREAD_REORDERING_CAP_STANDARD;
             }
         }
-
+#if NVRHI_D3D12_WITH_DXR12_OPACITY_MICROMAP
+    #ifdef NVRHI_WITH_RTXMU
+        m_OpacityMicromapSupported = false; // RTXMU does not support OMMs
+    #endif
+#endif // NVRHI_D3D12_WITH_DXR12_OPACITY_MICROMAP
 #if NVRHI_WITH_NVAPI_OPACITY_MICROMAP
 #ifdef NVRHI_WITH_RTXMU
         m_OpacityMicromapSupported = false; // RTXMU does not support OMMs

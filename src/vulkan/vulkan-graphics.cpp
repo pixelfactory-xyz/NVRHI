@@ -563,7 +563,7 @@ namespace nvrhi::vulkan
         m_CurrentPipelineLayout = pso->pipelineLayout;
         m_CurrentPushConstantsVisibility = pso->pushConstantVisibility;
 
-        if (arraysAreDifferent(m_CurrentComputeState.bindings, state.bindings) || m_AnyVolatileBufferWrites)
+        if (arraysAreDifferent(m_CurrentGraphicsState.bindings, state.bindings) || m_AnyVolatileBufferWrites)
         {
             bindBindingSets(vk::PipelineBindPoint::eGraphics, pso->pipelineLayout, state.bindings, pso->descriptorSetIdxToBindingIdx);
         }
